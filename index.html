@@ -216,6 +216,33 @@ button.card.sel{transform:rotate(0deg) translateY(-32px) scale(1.05);z-index:8;
 .coach .x{flex:none;border:1px solid rgba(217,180,95,.35);background:none;border-radius:999px;
   padding:2px 11px;font-size:11px;color:var(--ivory-2);align-self:center;transition:.16s}
 .coach .x:hover{border-color:var(--brass-hot);color:var(--brass-hot)}
+.coach.stop{border-color:var(--brass);box-shadow:0 0 0 1px rgba(217,180,95,.35),0 18px 44px -24px #000}
+.coach.stop .num{background:var(--seal);color:#fff}
+.coach .x.go{background:linear-gradient(180deg,var(--brass-hot),var(--brass));border-color:var(--brass-hot);
+  color:#20180A;font-weight:900;padding:5px 18px}
+body.holding #ctl,body.holding .hand{pointer-events:none}
+body.holding #ctl{opacity:.4}
+body.tut .hand{margin-top:-4px}
+.hand .card.aim{transform:rotate(0deg) translateY(-24px);z-index:7;
+  box-shadow:0 0 0 3px var(--brass-hot),0 0 28px -2px var(--brass),var(--lift)}
+.btn.aim{box-shadow:0 0 0 3px var(--brass-hot),0 8px 20px -10px var(--brass)}
+.arrow{position:fixed;z-index:78;pointer-events:none;width:32px;height:44px;margin-left:-16px;
+  animation:bob .8s ease-in-out infinite}
+.arrow.up{transform:rotate(180deg);animation-name:bobUp}
+.arrow svg{width:100%;height:100%;display:block;filter:drop-shadow(0 4px 8px rgba(0,0,0,.6))}
+.arrow path{fill:var(--brass-hot);stroke:#20180A;stroke-width:2.5;stroke-linejoin:round}
+@keyframes bob{0%,100%{margin-top:-7px}50%{margin-top:3px}}
+@keyframes bobUp{0%,100%{margin-top:7px}50%{margin-top:-3px}}
+
+.coach{position:relative;overflow:hidden}
+.coach.stop{border-color:var(--brass);cursor:pointer;
+  box-shadow:0 0 0 1px rgba(217,180,95,.35),0 18px 44px -24px #000}
+.coach.stop .num{background:var(--seal);color:#fff}
+.coach.stop::after{content:"";position:absolute;left:0;bottom:0;height:2px;width:100%;
+  background:var(--brass-hot);transform-origin:left;animation:cdown var(--cdms,6s) linear forwards}
+@keyframes cdown{from{transform:scaleX(1)}to{transform:scaleX(0)}}
+body.holding #ctl,body.holding .hand{pointer-events:none}
+body.holding #ctl{opacity:.45}
 .lessonlist li{margin-bottom:7px}
 .lessonlist em{font-style:normal;color:var(--brass-hot);font-weight:700}
 
@@ -268,6 +295,7 @@ td.win{color:var(--brass);font-weight:700}
   .middle{gap:16px;--cardw:66px}
   .hand{margin-top:-20px}
   .dial{width:72%}
+  .arrow{width:26px;height:36px;margin-left:-13px}
 }
 </style>
 
@@ -323,6 +351,8 @@ td.win{color:var(--brass);font-weight:700}
   </div>
 </div>
 
+<div class="arrow" id="arrow" hidden><svg viewBox="0 0 34 46" aria-hidden="true">
+  <path d="M17 45 L3 23 h8.5 V3 h11 v20 H31 Z"></path></svg></div>
 <div class="fx" id="fx"></div>
 <div class="seal" id="seal"><span>オヌ</span></div>
 <div class="veil" id="veil" hidden><div class="sheet" id="sheet"></div></div>
@@ -438,13 +468,45 @@ let REACT_MS=3000;
 const CPU_MIN=700, CPU_VAR=550, SPE_EYE=0.65;
 const MOTION=!matchMedia("(prefers-reduced-motion: reduce)").matches;
 let G=null, sel=new Set(), timers=[];
-const clearTimers=()=>{timers.forEach(clearTimeout);timers=[];};
-const later=(fn,ms)=>{const t=setTimeout(()=>{timers=timers.filter(x=>x!==t);fn();},ms);timers.push(t);return t;};
+const clearTimers=()=>{
+  timers.forEach(r=>clearTimeout(r.id)); timers=[];
+  if(G){ G.held=[]; if(G.hold)releaseHold(); }
+};
+const later=(fn,ms)=>{
+  const r={fn,ms,start:Date.now(),id:null};
+  if(G&&G.hold){ G.held.push(r); return r; }
+  r.id=setTimeout(()=>{ timers=timers.filter(x=>x!==r); r.fn(); },ms);
+  timers.push(r); return r;
+};
+// 説明のあいだ卓を止める。走っているタイマーは残り時間ごと預かる
+function holdGame(){
+  if(!G||G.hold)return;
+  G.hold=true; G.held=G.held||[];
+  const now=Date.now();
+  timers.forEach(r=>{ clearTimeout(r.id); r.ms=Math.max(0,r.ms-(now-r.start)); G.held.push(r); });
+  timers=[];
+  const f=$("ipFill");
+  if(G.ipEnd){ G.ipLeft=Math.max(0,G.ipEnd-now); }
+  f.style.transition="none"; f.style.transform=getComputedStyle(f).transform;
+  document.body.classList.add("holding");
+}
+function releaseHold(){ G.hold=false; document.body.classList.remove("holding"); }
+function resumeGame(){
+  if(!G||!G.hold)return;
+  releaseHold();
+  const q=G.held||[]; G.held=[];
+  q.forEach(r=>later(r.fn,r.ms));
+  const f=$("ipFill");
+  if(G.ipLeft>0){
+    const left=G.ipLeft; G.ipLeft=0; G.ipEnd=Date.now()+left;
+    requestAnimationFrame(()=>{ f.style.transition="transform "+left+"ms linear"; f.style.transform="scaleX(0)"; });
+  }
+}
 const $=id=>document.getElementById(id);
 
 function newGame(maxRounds,tutorial){
   G={maxRounds,round:0,totals:[0,0,0,0],history:[],dealer:0,lastWinner:null,players:null,
-     tutorial:!!tutorial,tips:new Set()};
+     tutorial:!!tutorial,tips:new Set(),hold:false,held:[],ipEnd:0,ipLeft:0,active:null};
   REACT_MS=tutorial?4600:3000;
   startRound();
 }
@@ -476,6 +538,8 @@ function dealRound(){
   G.discard.push(top); G.top=top; G.color=top.color;
   G.dir=1; G.pending=null; G.phase="deal";
   G.lastPlay=null; G.chain=null; G.canPass=false; G.logs=[]; G.flying=0; G.hideTop=true;
+  G.hold=false; G.held=[]; G.ipEnd=0; G.ipLeft=0; G.active=null;
+  document.body.classList.remove("holding"); document.body.classList.toggle("tut",!!G.tutorial); hideArrow();
   say(`— 第${G.round}ラウンド —`,"hi");
   render();
   dealAnimation(()=>{
@@ -641,7 +705,9 @@ function forcedDraw(){
 
 /* ═══════════ カードを出す ═══════════ */
 function play(pi,cards,chosen){
+  if(G.phase==="over")return;
   const p=G.players[pi];
+  if(cards.some(c=>p.hand.indexOf(c)<0))return;   // 二重クリック対策
   let src;
   if(pi===0){
     const el=document.querySelector(`#hand .card[data-id="${cards[0].id}"]`);
@@ -670,6 +736,7 @@ function setIP(mode,ms){
   lab.className="ip-lab"+(mode==="in"?" on":mode==="out"?" out":"");
   lab.textContent=mode==="in"?"インプレイ":mode==="out"?"アウトオブプレイ":"待機";
   fill.style.transition="none"; fill.style.transform="scaleX(1)";
+  G.ipLeft=0; G.ipEnd=mode==="in"?Date.now()+ms:0;
   if(mode==="in") requestAnimationFrame(()=>{
     fill.style.transition=`transform ${ms}ms linear`; fill.style.transform="scaleX(0)";
   });
@@ -710,6 +777,7 @@ function applyEffects(){
 
 /* ═══════════ 特殊上がり ═══════════ */
 function doWarikomi(pi,card){
+  if(G.phase==="over"||G.players[pi].hand.indexOf(card)<0)return;
   clearTimers(); const p=G.players[pi];
   const el=pi===0?document.querySelector(`#hand .card[data-id="${card.id}"]`):null;
   const src=el?rectOf(el):seatRect(pi);
@@ -728,6 +796,7 @@ function doWarikomi(pi,card){
   openReact();
 }
 function doSpe(pi){
+  if(G.phase==="over"||G.players[pi].hand.length<2)return;
   clearTimers(); const p=G.players[pi],cards=p.hand.slice(),src=seatRect(pi);
   say(`${p.name}「オヌスペ！」 ${cards.length}枚 = ${sum(cards)}点`,"sl");
   p.hand.length=0;
@@ -752,6 +821,7 @@ function openSpeWindow(){
   later(()=>{ if(G.phase==="spe")finishChain(); },REACT_MS);
 }
 function speReturn(pi){
+  if(G.phase==="over"||G.players[pi].hand.length<2)return;
   clearTimers(); const p=G.players[pi],cards=p.hand.slice(),src=seatRect(pi);
   say(`${p.name}「オヌスペ返し！」 ${cards.length}枚 = ${sum(cards)}点`,"sl");
   p.hand.length=0; G.discard.push(...cards); G.top=cards[cards.length-1]; G.color=G.top.color;
@@ -759,6 +829,7 @@ function speReturn(pi){
   flyPlay(pi,cards,src); flashSeal("返し"); render(); openSpeWindow();
 }
 function speBreak(pi){
+  if(G.phase==="over"||!G.players[pi].hand.length)return;
   clearTimers(); const p=G.players[pi],c=p.hand.pop(),src=seatRect(pi);
   say(`${p.name}「オヌスペ破り！」 ${cname(c)}`,"sl");
   G.discard.push(c); G.top=c; G.color=c.color;
@@ -815,7 +886,8 @@ function closeAfterPass(){ G.turn=((G.turn+G.dir)%4+4)%4; render(); later(beginT
 const BONUS={onu:-20,spe:-20,kasane:0,warikomi:0};
 const TYPEN={onu:"オヌ上がり",spe:"オヌスペ",kasane:"重ね上がり",warikomi:"割り込み上がり",chain:"オヌスペ返し／破り"};
 function finish(winner,type){
-  clearTimers(); G.phase="over"; setIP("idle");
+  if(G.phase==="over")return;          // 二重決着を防ぐ
+  clearTimers(); G.phase="over"; setIP("idle"); render();
   const scores=G.players.map(p=>sum(p.hand));
   if(type==="chain"){
     const ch=G.chain,ret=ch.length-1;
@@ -838,7 +910,7 @@ function finish(winner,type){
 
 /* ═══════════ 描画 ═══════════ */
 function render(){
-  if(!G)return;
+  if(!G||!G.players||!G.deck)return;   // 配る前は描かない
   $("cRound").textContent=G.round; $("cRoundMax").textContent=G.maxRounds;
   $("cDeck").textContent=G.deck.length;
   $("dial").classList.toggle("rev",G.dir===-1);
@@ -980,96 +1052,188 @@ const LESSONS={
 };
 const STEPS={
  1:[
+  {stop:1,when:c=>c.myTurn&&c.me.hand.length===3,
+   text:"場に出ているのが<em>赤4</em>。手札から出せるのは、場のカードと<em>同じ色・同じ数字・同じ文字</em>のどれかに当てはまる札だけです。いま明るいのは青4だけ——色は違いますが<em>数字が同じ4</em>だから出せます。暗い札は出せない印です。"},
   {when:c=>c.myTurn&&c.me.hand.length===3,
-   text:"場のカードは<em>赤4</em>。手札で出せるのは<em>青4</em>だけです（数字が同じ）。青4をクリックして選び、<em>「出す」</em>を押してください。"},
-  {when:c=>c.g.phase==="react"&&c.g.lastPlay&&c.g.lastPlay.by===0,
-   text:"出せました。カードが場に重なり、下のバーが走ります。これが<em>インプレイ</em>＝割り込みや宣言の受付時間。ここでは何もしなくて大丈夫です。"},
+   point:c=>c.sel()?c.button("出す"):c.card("青4"),
+   text:"矢印の<em>青4</em>をクリックして選び、続けて<em>「出す」</em>を押してください。"},
+  {stop:1,when:c=>c.g.phase==="react"&&c.g.lastPlay&&c.g.lastPlay.by===0,
+   text:"出せました。場が青4に変わったので、<em>次からは「青」か「4」に合わせる</em>ことになります。下で走っている細いバーは<em>インプレイ</em>——割り込みや宣言を受け付ける時間です（あとのラウンドで使います）。"},
   {when:c=>c.myTurn&&!c.g.canPass&&!c.legal.length,
-   text:"今度は出せる札がありません。<em>「山から1枚引く」</em>を押してください。"},
+   point:c=>c.button("山から1枚引く"),
+   text:"あなたの番ですが、手札はどれも場のカードと合いません（全部暗い）。<em>出せないときは山から1枚引く</em>のがルールです。矢印のボタンを押してください。"},
   {when:c=>c.myTurn&&c.g.canPass&&c.legal.length,
-   text:"引いた札がそのまま出せます。選んで<em>「出す」</em>。<em>引いた札はその場で出せる</em>のがONUのルールです。"},
-  {when:c=>c.myTurn&&c.g.canPass&&!c.legal.length,
-   text:"引いた札も出せません。<em>「なし（パス）」</em>で次の人に回します。"},
-  {when:c=>c.g.phase==="over",
-   text:"誰か一人が上がった時点でラウンド終了。<em>残った手札の点数</em>がそのまま自分の得点になります。上がった人だけが役に応じたマイナスをもらえます。"}
+   point:c=>c.sel()?c.button("出す"):c.playable(),
+   text:"引いた札が場に合いました。<em>引いた札はその場で出せます</em>（出せなければ「なし」で次の人へ）。矢印の札を選んで「出す」。"},
+  {when:c=>c.myTurn&&c.me.hand.length>0,
+   text:"ここからは同じ要領です。<em>出せる札を出す、無ければ引く</em>。誰かが上がったらラウンド終了です。"},
+  {stop:1,when:c=>c.g.phase==="over",
+   text:"誰かが最後の1枚を出した時点で<em>ラウンド終了</em>です。卓を見てください——<em>上がれなかった人は、手札に残った札の点数がそのまま自分の点になります</em>。数字はその数字、Skip・Reverse・Draw2 は10点、Wild は20点。<em>点は少ないほど良い</em>ので、重い札を抱えたまま終わるのが一番損です。"}
  ],
  2:[
   {when:c=>c.myTurn&&c.me.hand.length===3,
-   text:"出せるのは<em>緑スキップ</em>だけ（場の緑2と同じ色）。出すと<em>次のコウが飛ばされます</em>。出してみてください。"},
-  {when:c=>c.g.phase==="turn"&&c.g.turn===2,
-   text:"コウが飛ばされて<em>ミナの番</em>になりました。Skip は 2×枚数 人先へ進みます。"},
-  {when:c=>c.g.dir===-1,
-   text:"ミナが<em>リバース</em>を出しました。回る向きが逆になり、順番がこちらへ戻ってきます。"},
+   point:c=>c.sel()?c.button("出す"):c.card("緑スキップ"),
+   text:"場は<em>緑2</em>。出せるのは<em>緑スキップ</em>だけです（色が同じ）。Skip・Reverse・Draw2 を<em>文字カード</em>と呼び、Skip は<em>次の人を飛ばす</em>札。矢印の札を出して、順番がどう動くか見てください。"},
+  {stop:1,when:c=>c.g.phase==="turn"&&c.g.turn===2,
+   text:"順番がコウを飛び越して<em>ミナ</em>に移りました。Skip は<em>2×（出した枚数）人先</em>へ進みます。1枚なら2人先、つまり次の1人を飛ばした形です。"},
+  {stop:1,when:c=>c.g.dir===-1,
+   text:"今度はミナが<em>Reverse</em>を出しました。<em>回る向きが逆</em>になります（2枚同時など偶数枚なら元のまま）。卓の矢印の向きも変わり、順番がすぐこちらへ戻ってきます。"},
   {when:c=>c.myTurn&&c.me.hand.length===2,
-   text:"赤7と青7、<em>同じ数字が2枚</em>。両方クリックして「出す」。手札が空になって<em>重ね上がり（0点）</em>です。"}
+   point:c=>c.sel()===0?c.card("赤7"):c.sel()===1?c.card("青7"):c.button("出す"),
+   text:"赤7と青7は色こそ違え<em>どちらも数字が7</em>。ONUでは<em>同じ数字なら何枚でも同時に出せます</em>（重ねだし）。<em>上がりの札に文字カードは使えない</em>ので、緑スキップを先に処理したのが正解でした。矢印の順に2枚とも選んで「出す」。"},
+  {stop:1,when:c=>c.g.phase==="over",
+   text:"同じ数字を重ねて上がる形が<em>重ね上がり</em>。役がないので<em>0点</em>ですが、他の3人には手札の点数が乗るので十分に得な終わり方です。"}
  ],
  3:[
   {when:c=>c.myTurn&&c.g.pending,
-   text:"レンの<em>Draw2</em>が回ってきました。あなたも黄ドロー2を持っています。<em>重ねて出せば</em>、2枚ぶん＝4枚をコウに押しつけられます。"},
-  {when:c=>c.g.phase==="out",
-   text:"コウが4枚引いています。この間は<em>アウトオブプレイ</em>。誰もカードを出せず、ゲームが止まります。"},
+   point:c=>c.sel()?c.button("出す"):c.card("黄ドロー2"),
+   text:"レンが<em>Draw2</em>を出しました。このままだとあなたが2枚引かされます。でも<em>同じ札を重ねれば、引く役目を次の人に押しつけられます</em>。最後に返せなかった人が（重なった枚数×2）枚を引くことに。矢印の黄ドロー2を出しましょう。"},
+  {stop:1,when:c=>c.g.phase==="out",
+   text:"コウは返せる札を持っていなかったので、2枚×2＝<em>4枚</em>引いています。誰かが引いている間は<em>アウトオブプレイ</em>——その間は誰もカードを出せず、卓が止まります。"},
   {when:c=>c.myTurn&&c.legal.some(gr=>gr[0].color==="w"),
-   text:"<em>ワイルド</em>が出せます。場の色に関係なく出せて、次の色を指定できます。ただし1枚20点。残すと重いので、出せるうちに出しておきましょう。"},
-  {when:c=>c.myTurn&&c.me.hand.length>=4,
-   text:"引かされたぶん手札が重くなりました。<em>残った点数はそのまま自分の得点</em>。出せる札を探して減らしていきます。"}
+   point:c=>c.sel()?c.button("出す"):c.card("ワイルド"),
+   text:"<em>ワイルド</em>は場の色に関係なく出せて、次の色を自分で指定できる万能札。ただし<em>1枚20点</em>と重く、最後まで持っていると点にそのまま乗ります。矢印の札を出して、色を選んでください。"},
+  {when:c=>c.myTurn&&c.me.hand.length>0,
+   text:"ここからは同じ要領です。<em>出せる札を出す、無ければ引く</em>。誰かが上がったらラウンド終了です。"},
+  {stop:1,when:c=>c.g.phase==="over",
+   text:"引かされた枚数が、そのまま点差になります。<em>残った札の点数は全部自分の点</em>。重い札ほど早めに手放すのが得だと分かります。"}
  ],
  4:[
   {when:c=>c.myTurn&&c.me.hand.length===2,
-   text:"手札は2枚。出せるのは<em>青5</em>だけです。出してください。"},
+   point:c=>c.sel()?c.button("出す"):c.card("青5"),
+   text:"手札は2枚。<em>1枚出すと残り1枚</em>になります。ONUでは残り1枚になったとき<em>「オヌ！」と宣言</em>しなければいけません。まず矢印の青5を出して、その直後に何が出るか見てください。"},
+  {stop:1,when:c=>c.btn("オヌ！"),
+   text:"残り1枚になり、赤い<em>「オヌ！」</em>が出ました。いま説明のため止めていますが、本来は<em>下のバーが走りきる前に押す</em>のが宣言です。押し忘れると他の人に指摘されて<em>4枚</em>引かされます。"},
   {when:c=>c.btn("オヌ！"),
-   text:"残り1枚！ バーが切れる前に<em>「オヌ！」</em>を押してください。押し忘れると指摘されて4枚引かされます。"},
-  {when:c=>c.me.onu&&!c.myTurn,
-   text:"宣言できました。これが<em>オヌ状態</em>。あとは最後の1枚を出せば上がりです。"},
+   point:c=>c.button("オヌ！"),
+   text:"バーが切れる前に<em>「オヌ！」</em>を押してください。"},
+  {stop:1,when:c=>c.me.onu&&!c.myTurn,
+   text:"宣言できました。この状態を<em>オヌ状態</em>といいます。あとは最後の1枚を出せば上がりです。"},
   {when:c=>c.myTurn&&c.me.hand.length===1&&c.legal.length,
-   text:"場は赤。手札の<em>赤7</em>が出せます。出せば<em>オヌ上がり（−20点）</em>です。"}
+   point:c=>c.sel()?c.button("出す"):c.playable(),
+   text:"場は赤。手札の<em>赤7</em>が出せます。矢印の札を出してください。"},
+  {stop:1,when:c=>c.g.phase==="over",
+   text:"宣言してから最後の1枚を出す形が<em>オヌ上がり</em>。<em>−20点</em>です。点は少ないほど良いので、マイナスを取れるこの上がり方が一番よく使われます。"}
  ],
  5:[
   {when:c=>c.myTurn&&c.me.hand.length===2,
-   text:"同じ形から始めます。まず<em>青5</em>を出してください。"},
+   point:c=>c.sel()?c.button("出す"):c.card("青5"),
+   text:"さっきと同じ形から。ONUには<em>自分の番を待たずに出せる</em>場面があります。場のカードと<em>色も数字も同じ</em>札を持っているときです。まずは矢印の青5を出してください。"},
   {when:c=>c.btn("オヌ！"),
-   text:"<em>「オヌ！」</em>を押して、オヌ状態にしておきましょう。ここからが本番です。"},
+   point:c=>c.button("オヌ！"),
+   text:"残り1枚。<em>「オヌ！」</em>を押して、オヌ状態にしておきましょう。"},
+  {stop:1,when:c=>c.btn("割り込み上がり"),
+   text:"場を見てください。ミナが出したのは<em>赤7</em>。あなたの手札も<em>赤7</em>——<em>色も数字も同じ</em>です。この形なら順番を無視して出せます。オヌ状態で割り込んで上がるのが<em>割り込み上がり</em>（0点）。次の順番は割り込んだ人の次の人からになります。"},
   {when:c=>c.btn("割り込み上がり"),
-   text:"場に<em>赤7</em>が出ました。あなたの赤7と<em>色も数字も同じ</em>。順番を待たずに<em>「割り込み上がり！」</em>で抜けられます（0点）。"}
+   point:c=>c.button("割り込み上がり"),
+   text:"矢印の<em>「割り込み上がり！」</em>を押してください。"},
+  {when:c=>c.myTurn&&c.me.hand.length>0,
+   text:"ここからは同じ要領です。<em>出せる札を出す、無ければ引く</em>。誰かが上がったらラウンド終了です。"},
  ],
  6:[
-  {when:c=>c.g.phase==="turn"&&c.g.turn===1,
-   text:"あなたの手札は<em>赤4と黄5、合計9点</em>。コウがこれから出すカードの<em>点数</em>に注目してください。"},
+  {stop:1,when:c=>c.g.phase==="turn"&&c.g.turn===1,
+   text:"最後は<em>オヌスペ</em>。手札（2枚以上）の合計点が、<em>場に出たカードの点数とぴったり同じ</em>なら、順番に関係なく手札を全部出して上がれます。あなたの手札は赤4と黄5で<em>合計9点</em>。これからコウが出す札の<em>点数</em>に注目してください。"},
+  {stop:1,when:c=>c.btn("オヌスペ"),
+   text:"場に出たのは<em>青9＝9点</em>。あなたの手札の合計と同じです。狙えるのは<em>インプレイの間だけ</em>、そして<em>自分が出したカードにオヌスペはできません</em>。"},
   {when:c=>c.btn("オヌスペ"),
-   text:"場に出た<em>青9</em>はちょうど9点。手札の合計とぴったり同じです。<em>「オヌスペ！」</em>で全部出して上がれます（−20点）。"},
-  {when:c=>c.g.phase==="over",
-   text:"上がりました。最後に<em>6ラウンドの合計</em>を見てみましょう。合計が一番低い人が勝ちです。"}
+   point:c=>c.button("オヌスペ"),
+   text:"矢印の<em>「オヌスペ！」</em>を押してください。"},
+  {when:c=>c.myTurn&&c.me.hand.length>0,
+   text:"ここからは同じ要領です。<em>出せる札を出す、無ければ引く</em>。誰かが上がったらラウンド終了です。"},
+
+  {stop:1,when:c=>c.g.phase==="over",
+   text:"オヌスペは<em>−20点</em>。他人のオヌスペには<em>返し・破り</em>もあり、返した人が−50点、返された人が+50点、連続すると倍々になります（詳しくは右上の「ルール」）。これで上がり方は一通り。最後に6ラウンドの合計を見ましょう——<em>合計点が一番低い人が勝ち</em>です。"}
  ]
 };
-const TUTNOTE={
- 1:"上がった人は役に応じた点、それ以外の人は<b>手札に残ったカードの点数</b>がそのまま加算されます。点は少ないほど良いので、重い札は早めに手放すのが基本です。",
- 2:"重ね上がりは役がないので0点。それでも他の3人には手札の点数が乗るので、十分に有利な終わり方です。",
- 3:"引かされた枚数が、そのまま点差になります。Wild は1枚20点。出せるうちに出しておかないと最後に効いてきます。",
- 4:"オヌ上がりは −20点。宣言さえ忘れなければ、これが一番安定して点を減らせる上がり方です。",
- 5:"割り込み上がりは0点。順番を飛ばして抜けられるぶん、他の3人に点を押しつけられます。",
- 6:"オヌスペも −20点。これで上がり方は一通りです。最終結果で合計を見てみましょう。"
-};
-function coach(html){
-  const c=$("coach");
-  c.innerHTML='<span class="num">→</span><p>'+html+'</p><button class="x">閉じる</button>';
-  c.hidden=false;
-  c.querySelector(".x").onclick=hideCoach;
-  clearTimeout(coach._t); coach._t=setTimeout(hideCoach,16000);
+function readMs(html){
+  const n=html.replace(/<[^>]*>/g,"").length;
+  return Math.min(13000,Math.max(3400,1700+n*80));
 }
-function hideCoach(){ const c=$("coach"); if(c){c.hidden=true;c.innerHTML="";} clearTimeout(coach._t); }
+// 観察のあいだ：卓を止めて読ませ、読み終わる頃に自分で動き出す（クリックで早送り）
+function coachStop(html){
+  const c=$("coach"), ms=readMs(html);
+  clearTimeout(coach._t);
+  holdGame();
+  c.className="coach stop";
+  c.style.setProperty("--cdms",ms+"ms");
+  c.innerHTML='<span class="num">!</span><p>'+html+'</p>';
+  c.hidden=false;
+  const go=()=>{ clearTimeout(coach._t); hideCoach(); resumeGame(); render(); };
+  c.onclick=go;
+  coach._t=setTimeout(go,ms);
+}
+// 操作の案内：ボタンなし。言われたとおりに操作すれば次へ進む
+function coachDo(html){
+  const c=$("coach");
+  clearTimeout(coach._t);
+  c.className="coach";
+  c.style.removeProperty("--cdms");
+  c.innerHTML='<span class="num">→</span><p>'+html+'</p>';
+  c.onclick=null;
+  c.hidden=false;
+}
+function hideCoach(){
+  const c=$("coach");
+  if(c){ c.hidden=true; c.innerHTML=""; c.onclick=null; }
+  hideArrow(); clearTimeout(coach._t);
+}
+function coach(){}
+let arrowTarget=null, arrowRAF=0;
+function hideArrow(){
+  const a=$("arrow"); if(a)a.hidden=true;
+  if(arrowTarget){ arrowTarget.classList.remove("aim"); arrowTarget=null; }
+  if(arrowRAF){ cancelAnimationFrame(arrowRAF); arrowRAF=0; }
+}
+function aimArrow(st,c){
+  let el=null;
+  if(st&&st.point){ try{ el=st.point(c); }catch(e){ el=null; } }
+  if(!el){ hideArrow(); return; }
+  if(arrowTarget===el){ if(!arrowRAF)arrowRAF=requestAnimationFrame(trackArrow); return; }
+  if(arrowTarget)arrowTarget.classList.remove("aim");
+  arrowTarget=el; el.classList.add("aim");
+  if(!arrowRAF)arrowRAF=requestAnimationFrame(trackArrow);
+}
+// 対象は持ち上がるので、矢印は毎フレーム位置を追いかける
+function trackArrow(){
+  arrowRAF=0;
+  const a=$("arrow");
+  if(!arrowTarget||!arrowTarget.isConnected){ hideArrow(); return; }
+  const r=arrowTarget.getBoundingClientRect();
+  if(!r.width&&!r.height){ hideArrow(); return; }
+  const fromBelow=arrowTarget.classList.contains("btn")||r.top<58;
+  a.classList.toggle("up",fromBelow);
+  a.style.left=(r.left+r.width/2)+"px";
+  a.style.top=(fromBelow? r.bottom+6 : r.top-(innerWidth<760?37:46))+"px";
+  a.hidden=false;
+  arrowRAF=requestAnimationFrame(trackArrow);
+}
+function tutCtx(){
+  const me=G.players[0];
+  const myTurn=G.phase==="turn"&&G.turn===0;
+  const ctls=()=>[...document.querySelectorAll("#ctl .btn")].filter(b=>!b.disabled);
+  return {g:G,me,myTurn,legal:myTurn?legalGroups(me):[],
+    btn:t=>ctls().some(b=>b.textContent.indexOf(t)===0),
+    button:t=>ctls().find(b=>b.textContent.indexOf(t)===0)||null,
+    card:n=>document.querySelector('#hand .card[aria-label="'+n+'"]:not([disabled])'),
+    playable:()=>document.querySelector('#hand .card:not([disabled])'),
+    sel:()=>sel.size};
+}
+const tutTrue=(fn,c)=>{ try{ return !!fn(c); }catch(e){ return false; } };
 function tutStep(){
   if(!G||!G.tutorial)return;
   const list=STEPS[G.round]; if(!list)return;
-  const me=G.players[0];
-  const labels=[...document.querySelectorAll("#ctl .btn")].filter(b=>!b.disabled).map(b=>b.textContent);
-  const myTurn=G.phase==="turn"&&G.turn===0;
-  const c={g:G,me,myTurn,legal:myTurn?legalGroups(me):[],
-           btn:t=>labels.some(x=>x.indexOf(t)===0)};
+  const c=tutCtx();
+  if(G.active!=null){
+    const st=list[G.active];
+    if(st&&tutTrue(st.when,c)){ aimArrow(st,c); return; }   // 実行待ち：矢印だけ追従
+    G.active=null; hideCoach();
+  }
   for(let i=0;i<list.length;i++){
     if(G.tips.has(G.round+":"+i))continue;
-    let ok=false; try{ ok=list[i].when(c); }catch(e){ ok=false; }
-    if(!ok)continue;
-    for(let j=0;j<=i;j++)G.tips.add(G.round+":"+j);   // 飛ばした手順は消化済みに
-    coach(list[i].text);
+    if(!tutTrue(list[i].when,c))continue;
+    for(let j=0;j<=i;j++)G.tips.add(G.round+":"+j);
+    if(list[i].stop){ G.active=null; hideArrow(); coachStop(list[i].text); }
+    else { G.active=i; coachDo(list[i].text); aimArrow(list[i],c); }
     return;
   }
 }
@@ -1112,8 +1276,7 @@ function showRoundSheet(winner,type,scores,sixteen){
   open(`<div class="kicker">ROUND ${G.round} / ${G.maxRounds}</div>
     <h2>${G.players[winner].name} の上がり</h2>
     <p class="lead">役 <span class="bonus">${TYPEN[type]}</span>${sixteen?' ／ <span class="bonus">16枚返し</span>':""}</p>
-    ${detail}${G.tutorial&&TUTNOTE[G.round]?`<h3>いま起きたこと</h3><p>${TUTNOTE[G.round]}</p>`:""}
-    <h3>ここまでの得点</h3>${scoreTable()}
+    ${detail}<h3>ここまでの得点</h3>${scoreTable()}
     <div class="rowbtns">`+
     (last?'<button class="btn pri" id="mFinal">最終結果へ</button>'
          :'<button class="btn pri" id="mNext">次のラウンドへ</button>')+
@@ -1188,6 +1351,6 @@ $("bScore").onclick=()=>{
   <div class="rowbtns"><button class="btn" id="sc">閉じる</button></div>`);
   sheet.querySelector("#sc").onclick=close;
 };
-addEventListener("resize",()=>{ if(G&&G.phase!=="deal")render(); });
+addEventListener("resize",()=>{ if(G&&G.players&&G.phase!=="deal")render(); });
 showStart();
 </script>
