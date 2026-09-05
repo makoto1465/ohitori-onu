@@ -216,8 +216,6 @@ button.card.sel{transform:rotate(0deg) translateY(-32px) scale(1.05);z-index:8;
 .coach .x{flex:none;border:1px solid rgba(217,180,95,.35);background:none;border-radius:999px;
   padding:2px 11px;font-size:11px;color:var(--ivory-2);align-self:center;transition:.16s}
 .coach .x:hover{border-color:var(--brass-hot);color:var(--brass-hot)}
-.coach.stop{border-color:var(--brass);box-shadow:0 0 0 1px rgba(217,180,95,.35),0 18px 44px -24px #000}
-.coach.stop .num{background:var(--seal);color:#fff}
 .coach .x.go{background:linear-gradient(180deg,var(--brass-hot),var(--brass));border-color:var(--brass-hot);
   color:#20180A;font-weight:900;padding:5px 18px}
 body.holding #ctl,body.holding .hand{pointer-events:none}
@@ -238,9 +236,6 @@ body.tut .hand{margin-top:-4px}
 .coach.stop{border-color:var(--brass);cursor:pointer;
   box-shadow:0 0 0 1px rgba(217,180,95,.35),0 18px 44px -24px #000}
 .coach.stop .num{background:var(--seal);color:#fff}
-.coach.stop::after{content:"";position:absolute;left:0;bottom:0;height:2px;width:100%;
-  background:var(--brass-hot);transform-origin:left;animation:cdown var(--cdms,6s) linear forwards}
-@keyframes cdown{from{transform:scaleX(1)}to{transform:scaleX(0)}}
 body.holding #ctl,body.holding .hand{pointer-events:none}
 body.holding #ctl{opacity:.45}
 .lessonlist li{margin-bottom:7px}
@@ -307,6 +302,7 @@ td.win{color:var(--brass);font-weight:700}
     </div>
     <div class="spacer"></div>
     <div class="chip">ラウンド <b id="cRound">–</b>/<b id="cRoundMax">–</b></div>
+    <button class="tbtn" id="bSound" aria-pressed="true" title="効果音">🔊 音</button>
     <button class="tbtn" id="bScore">得点表</button>
     <button class="tbtn" id="bRules">ルール</button>
   </header>
@@ -359,6 +355,109 @@ td.win{color:var(--brass);font-weight:700}
 
 <script>
 "use strict";
+/* ═══════════ 効果音 ═══════════
+   外部音源は使わず Web Audio で合成する。カード系は正弦波の「ピコ音」ではなく、
+   帯域を絞った短いノイズ（＝紙が擦れる音）と低域の当たり音を重ねて作る。 */
+const SFX=(()=>{
+  let ctx=null, master=null, noiseBuf=null, on=true;
+  try{ on=localStorage.getItem("onu.sound")!=="0"; }catch(e){}
+  function boot(){
+    if(ctx)return true;
+    const AC=window.AudioContext||window.webkitAudioContext;
+    if(!AC)return false;
+    try{
+      ctx=new AC();
+      master=ctx.createGain(); master.gain.value=.8; master.connect(ctx.destination);
+      const len=Math.floor(ctx.sampleRate*1.2);
+      noiseBuf=ctx.createBuffer(1,len,ctx.sampleRate);
+      const d=noiseBuf.getChannelData(0);
+      for(let i=0;i<len;i++)d[i]=Math.random()*2-1;
+    }catch(e){ ctx=null; return false; }
+    return true;
+  }
+  // 帯域を絞ったノイズ＝紙・布の擦れ
+  function noise(at,dur,o){
+    o=o||{};
+    const src=ctx.createBufferSource();
+    src.buffer=noiseBuf; src.loop=true;
+    src.playbackRate.value=.85+Math.random()*.3;
+    const f=ctx.createBiquadFilter();
+    f.type=o.type||"bandpass"; f.Q.value=o.q==null?1:o.q;
+    if(o.sweep){ f.frequency.setValueAtTime(o.sweep[0],at);
+                 f.frequency.exponentialRampToValueAtTime(o.sweep[1],at+dur); }
+    else f.frequency.setValueAtTime(o.f||1800,at);
+    const g=ctx.createGain(), peak=o.g==null?.3:o.g;
+    g.gain.setValueAtTime(.0001,at);
+    g.gain.exponentialRampToValueAtTime(peak,at+(o.atk||.004));
+    g.gain.exponentialRampToValueAtTime(.0001,at+dur);
+    src.connect(f); f.connect(g); g.connect(master);
+    src.start(at); src.stop(at+dur+.03);
+  }
+  function tone(at,dur,o){
+    o=o||{};
+    const osc=ctx.createOscillator();
+    osc.type=o.type||"sine";
+    osc.frequency.setValueAtTime(o.f||440,at);
+    if(o.f2)osc.frequency.exponentialRampToValueAtTime(o.f2,at+dur);
+    const g=ctx.createGain(), peak=o.g==null?.12:o.g;
+    g.gain.setValueAtTime(.0001,at);
+    g.gain.exponentialRampToValueAtTime(peak,at+(o.atk||.008));
+    g.gain.exponentialRampToValueAtTime(.0001,at+dur);
+    osc.connect(g); g.connect(master);
+    osc.start(at); osc.stop(at+dur+.03);
+  }
+  const go=fn=>{
+    if(!on||!boot())return;
+    if(ctx.state==="suspended")ctx.resume();
+    try{ fn(ctx.currentTime); }catch(e){}
+  };
+  const api={
+    unlock(){ if(on&&boot()&&ctx.state==="suspended")ctx.resume(); },
+    enabled(){ return on; },
+    toggle(){ on=!on; try{localStorage.setItem("onu.sound",on?"1":"0");}catch(e){} if(on)api.unlock(); return on; },
+    // 1枚滑らせる（配る・引く）
+    deal(d){ go(t=>{ const a=t+(d||0);
+      noise(a,.085,{sweep:[2900,820],q:1.1,g:.17});
+      tone(a,.05,{f:150,f2:78,g:.04}); }); },
+    // 場に置く（フェルトに当たる）
+    place(d){ go(t=>{ const a=t+(d||0);
+      noise(a,.13,{sweep:[2100,520],q:.9,g:.28});
+      noise(a+.012,.045,{f:3600,q:1.6,g:.09});
+      tone(a,.11,{f:112,f2:60,g:.15}); }); },
+    // めくる
+    flip(d){ go(t=>{ const a=t+(d||0);
+      noise(a,.07,{sweep:[620,2700],q:1.4,g:.12});
+      noise(a+.062,.10,{sweep:[2700,900],q:1.1,g:.24});
+      tone(a+.062,.07,{f:132,f2:74,g:.06}); }); },
+    // 山を切る
+    shuffle(d){ go(t=>{ const a=t+(d||0);
+      for(let i=0;i<18;i++)
+        noise(a+i*.028+Math.random()*.012,.035,
+          {f:1200+Math.random()*1900,q:1.5,g:.07+Math.random()*.05}); }); },
+    pick(){ go(t=>{ noise(t,.035,{f:2700,q:2.2,g:.14}); tone(t,.04,{f:540,g:.035,type:"triangle"}); }); },
+    unpick(){ go(t=>{ noise(t,.028,{f:1700,q:2.2,g:.09}); }); },
+    btn(){ go(t=>{ noise(t,.03,{f:1500,q:1.8,g:.12}); tone(t,.05,{f:300,f2:200,g:.045,type:"triangle"}); }); },
+    skip(){ go(t=>{ noise(t,.20,{sweep:[2700,520],q:2.4,g:.19}); }); },
+    reverse(){ go(t=>{ noise(t,.24,{sweep:[520,2700],q:2.4,g:.17});
+      tone(t,.24,{f:180,f2:430,g:.045,type:"triangle"}); }); },
+    onu(){ go(t=>{ tone(t,.55,{f:988,g:.12}); tone(t,.4,{f:1976,g:.03});
+      tone(t+.085,.5,{f:1319,g:.09}); }); },
+    spe(){ go(t=>{ [784,988,1319,1568].forEach((f,i)=>
+      tone(t+i*.075,.5-i*.055,{f,g:.10-i*.014})); }); },
+    win(){ go(t=>{ [523,659,784,1047].forEach((f,i)=>
+      tone(t+i*.09,.6-i*.06,{f,g:.11-i*.011})); }); },
+    over(){ go(t=>{ tone(t,.42,{f:392,g:.08}); tone(t+.12,.5,{f:294,g:.07}); }); },
+    notify(){ go(t=>{ tone(t,.16,{f:660,g:.05}); tone(t+.07,.2,{f:880,g:.045}); }); }
+  };
+  return api;
+})();
+// 最初の操作で音を解禁し、ボタン類にはクリック音を付ける
+addEventListener("pointerdown",e=>{
+  SFX.unlock();
+  const t=e.target&&e.target.closest?e.target.closest(".btn,.tbtn,.cpick,.coach .x"):null;
+  if(t&&!t.disabled)SFX.btn();
+},true);
+
 /* ═══════════ カード ═══════════ */
 const COLORS=["r","y","g","b"];
 const CN={r:"赤",y:"黄",g:"緑",b:"青",w:"黒"};
@@ -577,7 +676,7 @@ function fly(from,to,card,opt){
   return a;
 }
 function dealAnimation(done){
-  if(!MOTION){ done(); return; }
+  if(!MOTION){ SFX.shuffle(); SFX.flip(.45); done(); return; }
   const d=rectOf($("deckslot"));
   const from={left:d.left,top:d.top,width:d.width};
   let n=0;
@@ -587,8 +686,10 @@ function dealAnimation(done){
     const to=seatRect(p);
     fly(from,{left:to.left,top:to.top,width:p===0?d.width:d.width*.48},null,
       {delay:n*36,dur:340,spin:Math.random()*30-15});
+    SFX.deal(n*.036+.20);
     n++;
   }
+  SFX.flip((n*36+360)/1000+.30);
   later(()=>{
     const t=rectOf($("discard"));
     fly(from,{left:t.left,top:t.top,width:t.width},G.top,{flip:true,dur:540,spin:4});
@@ -596,18 +697,22 @@ function dealAnimation(done){
   },n*36+360);
 }
 function flyPlay(pi,cards,src){
+  const land=MOTION?(pi===0?.30:.40):0;
+  cards.forEach((c,i)=>{ if(MOTION)SFX.deal(i*.07); SFX.place(land+i*.07); });
   if(!MOTION)return;
   const d=rectOf($("discard")), to={left:d.left,top:d.top,width:d.width};
   G.flying++; G.hideTop=true;
-  const land=()=>{ G.flying=Math.max(0,G.flying-1); if(!G.flying){G.hideTop=false;render();} };
+  const done=()=>{ G.flying=Math.max(0,G.flying-1); if(!G.flying){G.hideTop=false;render();} };
   cards.forEach((c,i)=>{
     fly(src,to,c,{flip:pi!==0,dur:pi===0?340:450,delay:i*70,w:src.width,
       spin:(i-(cards.length-1)/2)*7+(Math.random()*6-3),
-      done:i===cards.length-1?land:null});
+      done:i===cards.length-1?done:null});
   });
 }
 function flyDraw(pi,count){
-  if(!MOTION||!count)return;
+  if(!count)return;
+  for(let i=0;i<Math.min(count,8);i++)SFX.deal(i*.08+(MOTION?.18:0));
+  if(!MOTION)return;
   const d=rectOf($("deckslot")), to=seatRect(pi);
   for(let i=0;i<Math.min(count,8);i++)
     fly({left:d.left,top:d.top,width:d.width},
@@ -628,6 +733,7 @@ function drawCards(pi,n){
       if(G.discard.length<2)break;
       const keep=G.discard.pop();
       G.deck=shuffle(G.discard); G.discard=[keep];
+      SFX.shuffle();
       say("山切れ。捨て札を切り直して山に。");
     }
     got.push(G.deck.pop());
@@ -769,8 +875,8 @@ function closeReact(){ setIP("idle"); applyEffects(); render(); later(beginTurn,
 function applyEffects(){
   const by=G.lastPlay.by,n=G.lastPlay.n,k=G.lastPlay.cards[0].kind;
   let adv=1;
-  if(k==="rev"){ if(n%2===1){G.dir*=-1;say("逆回りになった。");} else say("リバース偶数枚 → 向きはそのまま。"); }
-  else if(k==="skip"){ adv=2*n; say(`${2*n}人先へ。`); }
+  if(k==="rev"){ if(n%2===1){G.dir*=-1;SFX.reverse();say("逆回りになった。");} else say("リバース偶数枚 → 向きはそのまま。"); }
+  else if(k==="skip"){ adv=2*n; SFX.skip(); say(`${2*n}人先へ。`); }
   else if(k==="d2"||k==="wd4"){ G.pending={kind:k,n}; }
   G.turn=((by+G.dir*adv)%4+4)%4;
 }
@@ -903,6 +1009,7 @@ function finish(winner,type){
   G.history.push({round:G.round,winner,type,scores:scores.slice(),sixteen});
   G.dealer=scores.indexOf(Math.max(...scores)); G.lastWinner=winner;
   say(`${G.players[winner].name} が ${TYPEN[type]} で上がり！`,"hi");
+  if(winner===0)SFX.win(); else SFX.over();
   later(()=>{G.hideTop=false;render();},420);
   flashSeal(winner===0?"あがり":"終了");
   later(()=>showRoundSheet(winner,type,scores,sixteen),1250);
@@ -966,7 +1073,11 @@ function render(){
     }
     el.disabled=!ok;
     el.classList.toggle("sel",sel.has(c.id));
-    el.onclick=()=>{ sel.has(c.id)?sel.delete(c.id):sel.add(c.id); render(); };
+    el.onclick=()=>{
+      if(sel.has(c.id)){ sel.delete(c.id); SFX.unpick(); }
+      else { sel.add(c.id); SFX.pick(); }
+      render();
+    };
   });
   paintControls();
 }
@@ -1036,6 +1147,8 @@ function btn(label,cls,disabled,fn){
 }
 function flashSeal(text){
   const s=$("seal"),t=text||"オヌ";
+  if(t==="オヌ")SFX.onu();
+  else if(t==="オヌスペ"||t==="返し"||t==="破り")SFX.spe();
   s.firstElementChild.textContent=t;
   s.firstElementChild.style.fontSize=t.length>3?"clamp(30px,8vw,64px)":"clamp(52px,13vw,110px)";
   s.classList.remove("go"); void s.offsetWidth; s.classList.add("go");
@@ -1145,22 +1258,19 @@ const STEPS={
    text:"オヌスペは<em>−20点</em>。他人のオヌスペには<em>返し・破り</em>もあり、返した人が−50点、返された人が+50点、連続すると倍々になります（詳しくは右上の「ルール」）。これで上がり方は一通り。最後に6ラウンドの合計を見ましょう——<em>合計点が一番低い人が勝ち</em>です。"}
  ]
 };
-function readMs(html){
-  const n=html.replace(/<[^>]*>/g,"").length;
-  return Math.min(13000,Math.max(3400,1700+n*80));
-}
-// 観察のあいだ：卓を止めて読ませ、読み終わる頃に自分で動き出す（クリックで早送り）
+// 相手の番など、こちらが操作しない場面：卓を止めて読ませ、「次へ」で再開する
 function coachStop(html){
-  const c=$("coach"), ms=readMs(html);
+  const c=$("coach");
   clearTimeout(coach._t);
   holdGame();
+  SFX.notify();
   c.className="coach stop";
-  c.style.setProperty("--cdms",ms+"ms");
-  c.innerHTML='<span class="num">!</span><p>'+html+'</p>';
+  c.style.removeProperty("--cdms");
+  c.innerHTML='<span class="num">!</span><p>'+html+'</p><button class="x go">次へ</button>';
   c.hidden=false;
-  const go=()=>{ clearTimeout(coach._t); hideCoach(); resumeGame(); render(); };
+  const go=()=>{ hideCoach(); resumeGame(); render(); };
+  c.querySelector(".x").onclick=e=>{ e.stopPropagation(); go(); };
   c.onclick=go;
-  coach._t=setTimeout(go,ms);
 }
 // 操作の案内：ボタンなし。言われたとおりに操作すれば次へ進む
 function coachDo(html){
@@ -1287,6 +1397,7 @@ function showRoundSheet(winner,type,scores,sixteen){
 }
 function showFinal(){
   const order=G.totals.map((t,i)=>({t,i})).sort((a,b)=>a.t-b.t);
+  if(order[0].i===0)SFX.win(); else SFX.over();
   open(`<div class="kicker">FINAL · ${G.maxRounds} ROUNDS</div>
     <h2>${order[0].i===0?"あなたの勝ち":NAMES[order[0].i]+" の勝ち"}</h2>
     <p class="lead">${G.tutorial?"チュートリアル修了。出す・引く／重ねだし／文字カード／ドロー返し／オヌ宣言／割り込み／オヌスペ、そして得点の集計まで一通り使いました。":"合計点が一番低い人が勝者です。"}</p>\n    ${G.tutorial?'<p>各ラウンドの点を足していき、<b>合計が一番低い人が勝ち</b>。上がりの役（オヌ上がり・オヌスペは −20点、返し／破りは −50点から倍々）でまとめてマイナスを稼げるので、最後まで逆転があります。本番は「ふつうに遊ぶ」から 5／7／9 ラウンドでどうぞ。</p>':""}<h3>順位</h3>
@@ -1344,6 +1455,13 @@ function showRules(){
   <div class="rowbtns"><button class="btn" id="rc">閉じる</button></div>`);
   sheet.querySelector("#rc").onclick=close;
 }
+(function(){
+  const b=$("bSound");
+  const paint=()=>{ const on=SFX.enabled(); b.textContent=(on?"🔊":"🔇")+" 音";
+    b.setAttribute("aria-pressed",on?"true":"false"); b.style.opacity=on?"":"0.55"; };
+  paint();
+  b.onclick=()=>{ if(SFX.toggle())SFX.btn(); paint(); };
+})();
 $("bRules").onclick=showRules;
 $("bScore").onclick=()=>{
   open(`<div class="kicker">SCORE SHEET</div><h2>得点表</h2>
