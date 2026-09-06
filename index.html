@@ -894,6 +894,16 @@ function validPlay(hand,cards){
   if(!matches(cards[0]))return "場のカードと色・数字・文字が合いません";
   return null;
 }
+// 重ねだしの並びは、そのまま「場に置く順」。先頭は場に合う札でなければならない。
+// 選んだ順を尊重しつつ、先頭が合わないときだけ合う札を先頭に繰り上げる。
+function orderPlay(hand,cards){
+  if(cards.length<2||!validPlay(hand,cards))return cards;
+  const i=cards.findIndex(c=>!validPlay(hand,[c]));
+  if(i<=0)return cards;
+  const r=cards.slice(), lead=r.splice(i,1)[0];
+  r.unshift(lead);
+  return validPlay(hand,r)?cards:r;
+}
 function legalGroups(p){
   const out=[],by={};
   for(const c of p.hand){(by[key(c)]=by[key(c)]||[]).push(c);}
@@ -1244,7 +1254,9 @@ function paintControls(){
   let msg="";
   const myTurn=G.phase==="turn"&&G.turn===0;
   if(myTurn){
-    const cards=me.hand.filter(c=>sel.has(c.id));
+    // 手札の並び順ではなく、選んだ順に並べる（最後に選んだ札が場のカードになる）
+    const picked=[...sel].map(id=>me.hand.find(c=>c.id===id)).filter(Boolean);
+    const cards=orderPlay(me.hand,picked);
     const err=cards.length?validPlay(me.hand,cards):null;
     b.push(btn(`出す${cards.length>1?` ${cards.length}枚`:""}`,"pri",!cards.length||!!err,()=>{
       if(cards[0].color==="w")askColor(cards); else play(0,cards,null);
@@ -1261,7 +1273,10 @@ function paintControls(){
         sel.clear(); const g=drawCards(0,1); say(`あなたは ${cname(g[0])} を引いた。`); G.canPass=true; render();
       }));
       msg=!legalGroups(me).length?"出せる札がありません。山から引いてください。"
-        :err?err:"同じ数字／同じ文字なら重ねて選べます。";
+        :err?err
+        :cards.length>1&&new Set(cards.map(c=>c.color)).size>1
+          ?`重ねだし：<b>${cname(cards[cards.length-1])}</b> が場のカードになります。`
+        :"同じ数字／同じ文字なら重ねて選べます。";
     }
   }else if(G.phase==="react"||G.phase==="spe"){
     if(me.forgot)b.push(btn("オヌ！","onu",false,()=>{
