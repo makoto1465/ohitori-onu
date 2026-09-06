@@ -117,7 +117,7 @@ button:focus-visible{outline:2px solid var(--brass-hot);outline-offset:3px}
 .log i.hi{color:var(--brass)} .log i.sl{color:#F5928A}
 @keyframes logIn{from{opacity:0;transform:translateY(4px)}}
 
-/* ── インプレイ ── */
+/* ── 受付時間のバー ── */
 .inplay{position:absolute;left:18px;right:18px;bottom:2px;height:22px;display:flex;align-items:center;gap:10px;z-index:5}
 .ip-lab{font-family:"Roboto Mono",monospace;font-size:9.5px;letter-spacing:.22em;white-space:nowrap;
   color:rgba(241,237,226,.35);transition:color .2s}
@@ -583,7 +583,7 @@ const SCENES={
            ["g7","b3","y6"],
            ["gR","y8","r9"],
            ["r5","y1","g8"]]},
- // 3) ワイルドとドロー返し → 重ねて押しつけ、アウトオブプレイを見る
+ // 3) ワイルドとドロー返し → 重ねて押しつけ、引いている間は誰も出せないことを見る
  3:{field:"y5",start:1,draw:[],script:["y1","y8","yD"],
     hands:[["yD","W","r2","g6"],
            ["y1","b3","g5"],
@@ -850,7 +850,7 @@ function forcedDraw(){
   const pi=G.turn,p=G.players[pi];
   const n=G.pending.n*(G.pending.kind==="d2"?2:4);
   G.pending=null; G.phase="out"; render(); setIP("out");
-  say(`${p.name} が ${n}枚 引く（アウトオブプレイ）`,"sl");
+  say(`${p.name} が ${n}枚 引く（この間は誰も出せません）`,"sl");
   later(()=>{
     drawCards(pi,n);
     if(n>=16)say(`${p.name} は一度に16枚！ 上がれば「16枚返し」。`,"hi");
@@ -886,11 +886,11 @@ function play(pi,cards,chosen){
   openReact();
 }
 
-/* ═══════════ インプレイ ═══════════ */
+/* ═══════════ 受付時間 ═══════════ */
 function setIP(mode,ms){
   const lab=$("ipLab"),fill=$("ipFill");
   lab.className="ip-lab"+(mode==="in"?" on":mode==="out"?" out":"");
-  lab.textContent=mode==="in"?"インプレイ":mode==="out"?"アウトオブプレイ":"待機";
+  lab.textContent=mode==="in"?"わりこみ受付":mode==="out"?"引いています":"待機";
   fill.style.transition="none"; fill.style.transform="scaleX(1)";
   G.ipLeft=0; G.ipEnd=mode==="in"?Date.now()+ms:0;
   if(mode==="in") requestAnimationFrame(()=>{
@@ -898,8 +898,34 @@ function setIP(mode,ms){
   });
   else fill.style.transform="scaleX(0)";
 }
+// この受付時間に、あなたにできることがあるか
+function humanCanReact(){
+  const me=G.players[0];
+  if(me.forgot)return true;                                  // オヌ宣言
+  for(let i=1;i<4;i++) if(G.players[i].forgot)return true;    // 相手の言い忘れを指摘
+  const notMine=G.phase==="spe"
+    ? (G.chain&&G.chain[G.chain.length-1]!==0)
+    : (G.lastPlay&&G.lastPlay.by!==0);
+  if(notMine&&me.hand.length>=2&&sum(me.hand)===pts(G.top)&&!me.hand.some(isSym))return true;  // オヌスペ
+  if(G.phase!=="spe"&&G.lastPlay&&G.lastPlay.by!==0){          // 割り込み
+    const ex=me.hand.filter(c=>c.color===G.color&&key(c)===key(G.top));
+    if(ex.length&&(me.hand.length>1||me.onu))return true;
+  }
+  if(G.phase==="spe"&&G.chain){                               // オヌスペ破り
+    const last=G.chain[G.chain.length-1];
+    if(me.hand.length===1&&me.onu&&0===((last+G.dir)%4+4)%4){
+      const c=me.hand[0];
+      if(!isSym(c)&&(c.color===G.color||(c.kind==="num"&&G.top.kind==="num"&&c.num===G.top.num)))return true;
+    }
+  }
+  return false;
+}
+// チュートリアルでは、CPUは受付時間に動かない。あなたにも用が無ければ待たせない
+const reactMs=()=>(G.tutorial&&!humanCanReact())?420:REACT_MS;
 function openReact(){
-  G.phase="react"; setIP("in",REACT_MS); render();
+  G.phase="react";
+  const ms=reactMs();
+  setIP("in",ms); render();
   (G.tutorial?[]:shuffle([1,2,3])).forEach((pi,idx)=>{
     later(()=>{
       if(G.phase!=="react")return;
@@ -919,7 +945,7 @@ function openReact(){
     say(`${G.players[1+(Math.random()*3|0)].name}「オヌ言ってない！」→ あなたは4枚引いた。`,"sl");
     drawCards(0,4); render();
   },2000);
-  later(()=>{ if(G.phase==="react")closeReact(); },REACT_MS);
+  later(()=>{ if(G.phase==="react")closeReact(); },ms);
 }
 function closeReact(){ setIP("idle"); applyEffects(); render(); later(beginTurn,260); }
 function applyEffects(){
@@ -963,7 +989,9 @@ function doSpe(pi){
   render(); openSpeWindow();
 }
 function openSpeWindow(){
-  G.phase="spe"; setIP("in",REACT_MS); render();
+  G.phase="spe";
+  const ms=reactMs();
+  setIP("in",ms); render();
   const last=G.chain[G.chain.length-1];
   (G.tutorial?[]:shuffle([1,2,3])).forEach((pi,idx)=>later(()=>{
     if(G.phase!=="spe")return;
@@ -974,7 +1002,7 @@ function openSpeWindow(){
       if(!isSym(c)&&(c.color===G.color||(c.kind==="num"&&G.top.kind==="num"&&c.num===G.top.num))) speBreak(pi);
     }
   },750+idx*300+Math.random()*400));
-  later(()=>{ if(G.phase==="spe")finishChain(); },REACT_MS);
+  later(()=>{ if(G.phase==="spe")finishChain(); },ms);
 }
 function speReturn(pi){
   if(G.phase==="over"||G.players[pi].hand.length<2)return;
@@ -1183,8 +1211,8 @@ function paintControls(){
         const p=G.players[i];p.forgot=false;
         say(`あなた「オヌ言ってない！」→ ${p.name} は4枚引いた。`,"hi");drawCards(i,4);render();
       }));
-    msg=b.length?"インプレイ。宣言するなら今。":"インプレイ中…";
-  }else if(G.phase==="out")msg="アウトオブプレイ — 誰も動けません。";
+    msg=b.length?"いまなら宣言・わりこみができます。":"受付中…";
+  }else if(G.phase==="out")msg="カードを引いています — この間は誰も出せません。";
   else if(G.phase==="deal")msg="配っています…";
   else if(G.phase==="turn")msg=`${G.players[G.turn].name} の番。`;
   ctl.innerHTML=""; b.forEach(x=>ctl.appendChild(x));
@@ -1301,7 +1329,7 @@ const STEPS_UNO={
    text:"<em>「出す」</em>でコウに押しつけます。"},
   {stop:1,when:c=>c.g.phase==="out",say:[
    {t:"コウは返せず、<em>4枚</em>引いています。",show:c=>{demoFloat(c.el("#seat1"),"+4枚","no");}},
-   "この間を<em>アウトオブプレイ</em>と呼びます。",
+   "この間は<em>誰もカードを出せません</em>（ルールブックでいう「アウトオブプレイ」）。",
    "誰もカードを出せず、割り込みもオヌスペも受け付けません。"]},
   {stop:1,when:c=>c.myTurn&&c.legal.some(gr=>gr[0].color==="w"),say:[
    {t:"ワイルドの効果は UNO と同じ。",show:c=>{demoTag(c.card("ワイルド"),"20点","no");}},
@@ -1322,7 +1350,7 @@ const STEPS_UNO={
   {stop:1,when:c=>c.myTurn&&c.me.hand.length===2,say:[
    "UNO の「ウノ！」にあたるのが<em>「オヌ！」</em>。",
    "残り1枚で宣言します。違いは2つ。",
-   "1つめ。<em>受付が「インプレイ」の間に限られる</em>。",
+   "1つめ。<em>宣言できる時間が決まっている</em>（カードが出た直後の数秒間）。",
    "2つめ。<em>宣言した状態が、特殊な上がりの前提条件になる</em>。"]},
   {when:c=>c.myTurn&&c.me.hand.length===2&&c.sel()===0,point:c=>c.card("青5"),
    text:"矢印の<em>青5</em>を選んでください。出すと残り1枚です。"},
@@ -1378,7 +1406,7 @@ const STEPS_UNO={
   {stop:1,when:c=>c.btn("オヌスペ"),say:[
    {t:"コウが出したのは<em>青9</em>＝<em>9点</em>。",show:c=>{demoRing(c.el("#discard"));demoTag(c.el("#discard"),"9点","pt");}},
    {t:"手札の合計と<em>ぴったり同じ</em>です。",show:c=>{tagPoints(c);demoLink(c.el("#discard"),c.el("#hand"),"9点 = 9点");}},
-   "自分が出した札には使えません。狙えるのはインプレイの間だけ。"]},
+   "自分が出した札には使えません。狙えるのは、札が出た直後の数秒間だけ。"]},
   {when:c=>c.btn("オヌスペ"),point:c=>c.button("オヌスペ"),
    text:"矢印の<em>「オヌスペ！」</em>を押してください。"},
   {when:c=>c.myTurn&&c.me.hand.length>0,
@@ -1849,7 +1877,7 @@ function showStart(){
       <button class="btn" data-n="7">7ラウンド</button>
       <button class="btn" data-n="9">9ラウンド</button></div>
     <h3>この卓での約束ごと</h3>
-    <ul><li>カードが場に置かれるたび、卓の下の細いバーが走ります。これが<b>インプレイ</b>＝割り込み・オヌスペ・オヌ宣言の受付時間です。</li>
+    <ul><li>カードが場に置かれるたび、卓の下の細いバーが走ります。これが<b>受付時間</b>。割り込み・オヌスペ・オヌ宣言はこの間だけできます。</li>
     <li>残り1枚になったら、バーが切れる前に<b>オヌ！</b>を押す。忘れると誰かに指摘されて4枚。</li>
     <li>上がりの札に文字カード（Skip・Reverse・Draw2・Wild・Wild Draw4）は使えません。</li>
     <li>Wild Draw4 ×4枚 または Draw2 ×8枚 で16枚引いた人がそのラウンドに上がると<b>16枚返し</b>。</li></ul>`,false);
@@ -1873,7 +1901,7 @@ function showRules(){
   <h3>UNO との違いだけ先に</h3>
   <ul><li><b>点が少ないほうが勝ち。</b>上がった人はマイナス点、上がれなかった人は手札に残った点が失点。</li>
   <li><b>同じ数字は何枚でも同時に出せる</b>（重ねだし）。ただし<b>上がりの札に記号カードは使えない</b>。</li>
-  <li><b>自分の番でなくても出せる場面がある。</b>カードが出るたびの受付時間（インプレイ）に、割り込み・オヌスペを狙える。</li>
+  <li><b>自分の番でなくても出せる場面がある。</b>カードが出た直後の数秒間（受付時間）に、割り込み・オヌスペを狙える。</li>
   <li><b>Draw2 / Wild Draw4 の重ね返しが正式ルール。</b>返せなかった人がまとめて引く。</li>
   <li><b>上がり方に役があり、役で点が決まる。</b>下の表のとおり。</li></ul>
   <h3>カードの点数</h3>
@@ -1884,7 +1912,7 @@ function showRules(){
   <li><b>重ねだし</b>：同じ数字（または同じ文字）のカードは何枚でも同時に出せる。</li>
   <li><b>割り込み</b>：色も数字（文字）も場と同じカードは、順番に関係なく出せる。次はその人の次の人から。</li>
   <li>Reverse は奇数枚で逆回り、偶数枚でそのまま。Skip は 2×枚数 人先へ。</li>
-  <li>Draw2 / Wild Draw4 は重ねて返せる。返せなかった人が（枚数×2）／（枚数×4）枚引く。引いている間は<b>アウトオブプレイ</b>で誰も動けない。</li></ul>
+  <li>Draw2 / Wild Draw4 は重ねて返せる。返せなかった人が（枚数×2）／（枚数×4）枚引く。<b>引いている間は誰もカードを出せない</b>（ルールブックの「アウトオブプレイ」）。</li></ul>
   <h3>上がり方と得点</h3>
   <ul><li><b>オヌ上がり</b> −20点 … 残り1枚で「オヌ！」と宣言し、最後の1枚を出して上がる。</li>
   <li><b>オヌスペ</b> −20点 … 場のカードの点数と手札（2枚以上）の合計が等しいとき、順番に関係なく全部出して上がる。自分が出したカードには不可。</li>
@@ -1895,8 +1923,8 @@ function showRules(){
   <h3>ラウンド終了</h3>
   <p>誰かが上がった時点で終了。他の人は手札の点数がそのまま加算されます。決めたラウンド数を終えて、合計点が一番低い人が勝者。</p>
   <h3>一人用にした部分</h3>
-  <ul><li>本来は早い者勝ちのリアルタイム勝負ですが、ここでは1枚出るごとの<b>3秒のインプレイ</b>に置き換えています。CPUもこの間に割り込み・オヌスペを狙ってきます。</li>
-  <li>オヌの言い忘れは、インプレイ中に指摘されれば4枚、指摘されずに順番が戻ってくれば1枚引きます（CPUの言い忘れはあなたが指摘できます）。</li>
+  <ul><li>本来は早い者勝ちのリアルタイム勝負ですが、ここでは1枚出るごとの<b>3秒の受付時間</b>（ルールブックの「インプレイ」）に置き換えています。CPUもこの間に割り込み・オヌスペを狙ってきます。</li>
+  <li>オヌの言い忘れは、受付時間のうちに指摘されれば4枚、指摘されずに順番が戻ってくれば1枚引きます（CPUの言い忘れはあなたが指摘できます）。</li>
   <li>CPUはオヌスペを常に見抜くわけではありません。あなたが先に気づけば、その場は取れます。</li></ul>
   <div class="rowbtns"><button class="btn" id="rc">閉じる</button></div>`);
   sheet.querySelector("#rc").onclick=close;
