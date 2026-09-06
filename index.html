@@ -48,7 +48,9 @@ button:focus-visible{outline:2px solid var(--brass-hot);outline-offset:3px}
 .tbtn:hover{border-color:var(--brass);color:var(--brass-hot)}
 
 /* ═══ フェルト卓 ═══ */
-.stage{position:relative;flex:1 1 auto;min-height:210px;border-radius:26px;
+/* z-index:0 は必須。これが無いと卓が独自の重ね順を作らず、中の .tableedge(6) などが
+   外へ漏れて手札(.hand は 5)より上になり、持ち上げた札が卓のフチに隠れる。 */
+.stage{position:relative;z-index:0;flex:1 1 auto;min-height:210px;border-radius:26px;
   background:radial-gradient(ellipse 78% 70% at 50% 44%, var(--felt-1) 0%, var(--felt-2) 46%, var(--felt-3) 100%);
   box-shadow:inset 0 0 0 2px rgba(217,180,95,.2), inset 0 0 140px -20px rgba(0,0,0,.75),
     inset 0 4px 20px rgba(255,255,255,.05), 0 26px 60px -26px #000;
