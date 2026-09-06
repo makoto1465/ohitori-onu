@@ -224,23 +224,18 @@ button.card.sel{transform:rotate(0deg) translateY(-32px) scale(1.05);z-index:8;
 .coach.do::before{content:"あなたの番";background:linear-gradient(180deg,var(--brass-hot),var(--brass));color:#20180A}
 .coach.stop{cursor:pointer}
 .coach .body{flex:1;min-width:0}
-.coach p{margin:0;font-size:17px;line-height:1.95;color:#FBFAF7;letter-spacing:.01em}
+.coach p{margin:0;font-size:19px;line-height:1.9;color:#FBFAF7;letter-spacing:.015em}
 .coach p em{font-style:normal;color:var(--brass-hot);font-weight:700}
-.coach .dots{display:flex;gap:5px;margin:0}
-.coach .dots i{width:6px;height:6px;border-radius:50%;background:rgba(217,180,95,.28)}
-.coach .dots i.on{background:var(--brass-hot)}
 /* 「次へ」— 送れることが一目で分かるように、光らせて置く */
 /* 下段：進め方の案内。説明文とは別立てで常に見えている */
-.coach .foot{display:flex;align-items:center;gap:12px;margin-top:11px;padding-top:10px;
-  border-top:1px solid rgba(217,180,95,.2)}
-.coach .tap{margin-left:auto;display:flex;align-items:center;gap:8px;
-  font-size:12.5px;font-weight:700;color:var(--brass-hot);letter-spacing:.02em;white-space:nowrap}
-.coach .tap b{font-size:15px;line-height:1;animation:tapBob 1.1s ease-in-out infinite}
-.coach .tap.hot{background:rgba(217,180,95,.16);border:1.5px solid var(--brass-hot);
-  padding:6px 14px;border-radius:999px;box-shadow:0 0 0 0 rgba(217,180,95,.5);
-  animation:tapPulse 1.4s ease-out infinite}
-@keyframes tapBob{0%,100%{transform:translateY(-2px)}50%{transform:translateY(2px)}}
-@keyframes tapPulse{0%{box-shadow:0 0 0 0 rgba(217,180,95,.45)}70%,100%{box-shadow:0 0 0 12px rgba(217,180,95,0)}}
+.coach .foot{display:flex;align-items:center;justify-content:flex-end;gap:12px;margin-top:12px;min-height:22px}
+/* 最初の数回だけ出す案内。枠も背景も付けない、光る素の文字 */
+.coach .tapline{font-size:14.5px;font-weight:800;letter-spacing:.05em;color:#FFEEC0;
+  text-shadow:0 0 14px rgba(245,218,154,.9),0 0 36px rgba(217,180,95,.55),0 2px 8px rgba(0,0,0,.9);
+  animation:hintGlow 2.3s ease-in-out infinite}
+@keyframes hintGlow{0%,100%{opacity:.72;transform:translateY(1px)}50%{opacity:1;transform:translateY(-3px)}}
+.coach .tapline.out{animation:hintOut .6s ease-out forwards}
+@keyframes hintOut{to{opacity:0;transform:translateY(-10px)}}
 /* 「次がある」合図の ▼。ボタンではないので、枠のどこを押しても進む */
 .coach .caret{flex:none;pointer-events:none;font-size:19px;line-height:1;color:var(--brass-hot);
   text-shadow:0 2px 8px rgba(217,180,95,.55);opacity:0;transition:opacity .2s}
@@ -338,11 +333,10 @@ td.win{color:var(--brass);font-weight:700}
   .hand{margin-top:-20px}
   .dial{width:72%}
   .arrow{width:26px;height:36px;margin-left:-13px}
-  .coach p{font-size:15.5px;line-height:1.9}
+  .coach p{font-size:16.5px;line-height:1.85}
   .coach{padding:16px 12px 12px;gap:9px;min-height:92px;border-radius:14px;margin:6px 0 0}
   .coach .caret{font-size:17px}
-  .coach .tap{font-size:11px;gap:6px}
-  .coach .tap.hot{padding:5px 10px}
+  .coach .tapline{font-size:12px;letter-spacing:0}
   .coach .foot{margin-top:9px;padding-top:8px;gap:8px}
   .coach::before{font-size:10.5px;padding:2px 11px;left:14px}
   .dchip{font-size:12px;padding:3px 8px}
@@ -1719,12 +1713,12 @@ function advanceSay(){
   G.tapSeen=(G.tapSeen||0)+1;
   c.innerHTML='<div class="body"><p></p></div>'+
     '<div class="foot">'+
-    (q.length>1?'<div class="dots">'+q.map((_,i)=>'<i class="'+(i<=G.sayI?"on":"")+'"></i>').join("")+'</div>':'')+
-    '<span class="tap'+(G.tapSeen<=4?" hot":"")+'"><b>👆</b>この枠のどこを押しても次へ</span>'+
-    '<span class="caret">▼</span></div>';
+    (G.tapSeen<=3?'<span class="tapline">この枠内のどこを押しても次へ進めます</span>':'')+
+    '<span class="caret"></span></div>';
   c.hidden=false;
   c.onclick=onSayClick;
   if(s.show){ try{ s.show(tutCtx()); }catch(e){} }
+  c.querySelector(".caret").textContent="▼";
   typeInto(c.querySelector("p"),s.t,()=>{ const b=c.querySelector(".caret"); if(b)b.classList.add("on"); });
   fitMsg();
 }
@@ -1743,7 +1737,7 @@ function coachDo(html){
 function hideCoach(){
   const c=$("coach");
   if(c){ c.hidden=true; c.innerHTML=""; c.onclick=null; }
-  typeStop(); demoClear(); hideArrow(); fitMsg();
+  typeStop(); demoClear(); hideArrow();
 }
 /* ── 卓の上に描く補助表示 ── */
 function demoClear(){ const d=$("demo"); if(d){ d.innerHTML="<svg></svg>"; d.hidden=true; } }
