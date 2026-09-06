@@ -1258,22 +1258,15 @@ const LESSONS_UNO={
 const STEPS_UNO={
  1:[
   {stop:1,when:c=>c.myTurn&&c.me.hand.length===3,say:[
-   "出し方は UNO と同じです。",
-   {t:"場は<em>赤の4</em>。色か数字が合う札だけ出せます。",show:c=>{demoRing(c.el("#discard"));}},
-   {t:"<em>青の4</em>は数字が同じ。だから出せます。",show:c=>{demoLink(c.el("#discard"),c.card("青4"),"4 = 4");}},
-   {t:"ここまでは UNO どおり。違うのは<em>点の付き方</em>です。"},
-   "ONU は<em>合計点が一番低い人が勝ち</em>。",
-   "上がった人は、<em>マイナス点</em>をもらいます。",
-   "まず1ラウンド、その付き方を見てください。"]},
+   {t:"出し方は UNO と同じです。場は<em>赤の4</em>で、色か数字が合う札だけ出せます。",show:c=>{demoRing(c.el("#discard"));}},
+   {t:"<em>青の4</em>は数字が同じなので出せます。ここまでは UNO どおり。",show:c=>{demoLink(c.el("#discard"),c.card("青4"),"4 = 4");}},
+   "違うのは<em>点の付き方</em>です。ONU は<em>合計点が一番低い人が勝ち</em>で、上がった人はマイナス点をもらいます。まず1ラウンド、その付き方を見てください。"]},
   {when:c=>c.myTurn&&c.me.hand.length===3&&c.sel()===0,point:c=>c.card("青4"),
    text:"矢印の<em>青4</em>をクリックして選んでください。"},
   {when:c=>c.myTurn&&c.me.hand.length===3&&c.sel()>0,point:c=>c.button("出す"),
-   text:"<em>「出す」</em>を押します。"},
+   text:"続けて<em>「出す」</em>を押します。"},
   {stop:1,when:c=>c.g.phase==="react"&&c.g.lastPlay&&c.g.lastPlay.by===0,say:[
-   {t:"出せました。場が青の4に変わりました。",show:c=>{demoRing(c.el("#discard"));}},
-   {t:"卓の下に<em>金色のバー</em>が走っています。",show:c=>{demoRing(document.querySelector(".ip-track"),8);}},
-   "カードが1枚出るたびに走る<em>受付時間</em>です。",
-   "この間だけ打てる手が ONU にはあります（第4ラウンド以降）。"]},
+   {t:"出せました。卓の下に<em>金色のバー</em>が走っています。カードが1枚出るたびに走る<em>受付時間</em>で、この間だけ打てる手が ONU にはあります（第4ラウンド以降で使います）。",show:c=>{demoRing(document.querySelector(".ip-track"),8);}}]},
   {when:c=>c.myTurn&&!c.g.canPass&&!c.legal.length,point:c=>c.button("山から1枚引く"),
    text:"出せる札がありません。山から1枚引きます。"},
   {when:c=>c.myTurn&&c.g.canPass&&c.legal.length,point:c=>c.sel()?c.button("出す"):c.playable(),
@@ -1281,34 +1274,23 @@ const STEPS_UNO={
   {when:c=>c.myTurn&&c.me.hand.length>0,
    text:"ここからは同じ要領で。誰かが上がるまで続けてください。"},
   {stop:1,when:c=>c.g.phase==="over",say:[
-   "ラウンド終了。ここが ONU の根本です。",
-   {t:"上がった人は<em>−20点</em>。",show:c=>{const h=c.g.history[c.g.history.length-1];if(h)demoFloat(c.seat(h.winner),"−20点");}},
-   {t:"上がれなかった人は、<em>手札に残った点がそのまま失点</em>。",show:tagPoints},
-   {t:"あなたの残りも、そのまま点数になります。",show:c=>{tagPoints(c);demoFloat(c.el("#hand"),"合計 "+sum(c.g.players[0].hand)+"点");}},
-   "数字はその数字、記号カードは10点、ワイルドは20点。",
-   "UNO と逆で、<em>上がった人がマイナスを稼ぐ</em>ゲームです。"]}
+   {t:"ラウンド終了。ここが ONU の根本です——上がった人は<em>−20点</em>。",show:c=>{const h=c.g.history[c.g.history.length-1];if(h)demoFloat(c.seat(h.winner),"−20点");}},
+   {t:"上がれなかった人は<em>手札に残った点がそのまま失点</em>。数字はその数字、記号カードは10点、ワイルドは20点。UNO と逆で、<em>上がった人がマイナスを稼ぐ</em>ゲームです。",show:tagPoints}]}
  ],
  2:[
   {stop:1,when:c=>c.myTurn&&c.me.hand.length===3,say:[
-   "UNO に無い出し方が1つあります。",
-   "<em>同じ数字なら、何枚でも同時に出せます</em>（重ねだし）。",
-   "そして制限も1つ。",
-   "<em>上がりの札に記号カードは使えません</em>。",
-   {t:"いま出せるのは<em>緑スキップ</em>だけ。",show:c=>{demoLink(c.el("#discard"),c.card("緑スキップ"),"緑 = 緑");}},
-   "上がりに使えない札なので、先に処理するのが正解です。"]},
+   "UNO に無い出し方が1つ。<em>同じ数字なら何枚でも同時に出せます</em>（重ねだし）。そして制限も1つ——<em>上がりの札に記号カードは使えません</em>。",
+   {t:"いま出せるのは<em>緑スキップ</em>だけ。上がりに使えない札なので、先に処理するのが正解です。",show:c=>{demoLink(c.el("#discard"),c.card("緑スキップ"),"緑 = 緑");}}]},
   {when:c=>c.myTurn&&c.me.hand.length===3&&c.sel()===0,point:c=>c.card("緑スキップ"),
    text:"矢印の<em>緑スキップ</em>を選んでください。"},
   {when:c=>c.myTurn&&c.me.hand.length===3&&c.sel()>0,point:c=>c.button("出す"),
    text:"<em>「出す」</em>を押します。"},
   {stop:1,when:c=>c.g.phase==="turn"&&c.g.turn===2,say:[
-   {t:"順番がコウを飛び越して<em>ミナ</em>に移りました。",show:c=>{demoTagTop(c.el("#seat1"),"飛ばされた","no");demoRing(c.el("#seat2"));}},
-   "ONU では<em>2枚同時なら2人ぶん</em>飛ばせます。"]},
+   {t:"順番がコウを飛び越して<em>ミナ</em>に移りました。ONU では<em>2枚同時なら2人ぶん</em>飛ばせます。",show:c=>{demoTagTop(c.el("#seat1"),"飛ばされた","no");demoRing(c.el("#seat2"));}}]},
   {stop:1,when:c=>c.g.dir===-1,say:[
-   {t:"ミナが Reverse。<em>回る向きが逆</em>になりました。",show:c=>{demoRing(c.el("#dial"),0);}},
-   "ONU では<em>偶数枚まとめると向きは元のまま</em>です。"]},
+   {t:"ミナが Reverse。<em>回る向きが逆</em>になりました。ONU では<em>偶数枚まとめると向きは元のまま</em>という違いがあります。",show:c=>{demoRing(c.el("#dial"),0);}}]},
   {stop:1,when:c=>c.myTurn&&c.me.hand.length===2,say:[
-   {t:"赤7と青7。色は違うけれど<em>どちらも7</em>。",show:c=>{demoTag(c.card("赤7"),"7");demoTag(c.card("青7"),"7");}},
-   "2枚まとめて出せば、手札がゼロ＝上がりです。"]},
+   {t:"赤7と青7、色は違うけれど<em>どちらも7</em>。2枚まとめて出せば、手札がゼロ＝上がりです。",show:c=>{demoTag(c.card("赤7"),"7");demoTag(c.card("青7"),"7");}}]},
   {when:c=>c.myTurn&&c.me.hand.length===2&&c.sel()===0,point:c=>c.card("赤7"),
    text:"まず<em>赤7</em>を選びます。"},
   {when:c=>c.myTurn&&c.me.hand.length===2&&c.sel()===1,point:c=>c.card("青7"),
@@ -1316,30 +1298,20 @@ const STEPS_UNO={
   {when:c=>c.myTurn&&c.me.hand.length===2&&c.sel()===2,point:c=>c.button("出す"),
    text:"<em>「出す 2枚」</em>を押します。"},
   {stop:1,when:c=>c.g.phase==="over",say:[
-   "同じ数字を重ねて上がる形が<em>重ね上がり</em>。",
-   "得点は<em>0点</em>。マイナスは付きません。",
-   "それでも他の3人には手札の点が乗るので、十分に得です。"]}
+   "同じ数字を重ねて上がる形が<em>重ね上がり</em>で<em>0点</em>。マイナスは付きませんが、他の3人には手札の点が乗るので十分に得です。"]}
  ],
  3:[
   {stop:1,when:c=>c.myTurn&&c.g.pending,say:[
-   {t:"Draw2 が回ってきました。",show:c=>{demoRing(c.el("#discard"));}},
-   "UNO ではローカルルール扱いの<em>重ねて返す</em>が、",
-   "ONU では<em>正式ルール</em>です。",
-   {t:"あなたも同じドロー2を持っています。",show:c=>{demoTag(c.card("黄ドロー2"),"重ねられる");}},
-   "重ねるほど枚数が積み上がり、",
-   "<em>返せなかった人が（枚数×2）枚</em>まとめて引きます。"]},
+   {t:"Draw2 が回ってきました。UNO ではローカルルール扱いの<em>重ねて返す</em>が、ONU では<em>正式ルール</em>です。",show:c=>{demoRing(c.el("#discard"));}},
+   {t:"あなたも同じドロー2を持っています。重ねるほど枚数が積み上がり、<em>返せなかった人が（枚数×2）枚</em>まとめて引きます。",show:c=>{demoTag(c.card("黄ドロー2"),"重ねられる");}}]},
   {when:c=>c.myTurn&&c.g.pending&&c.sel()===0,point:c=>c.card("黄ドロー2"),
    text:"矢印の<em>黄ドロー2</em>を選んでください。"},
   {when:c=>c.myTurn&&c.g.pending&&c.sel()>0,point:c=>c.button("出す"),
    text:"<em>「出す」</em>でコウに押しつけます。"},
   {stop:1,when:c=>c.g.phase==="out",say:[
-   {t:"コウは返せず、<em>4枚</em>引いています。",show:c=>{demoFloat(c.el("#seat1"),"+4枚","no");}},
-   "この間は<em>誰もカードを出せません</em>（ルールブックでいう「アウトオブプレイ」）。",
-   "誰もカードを出せず、割り込みもオヌスペも受け付けません。"]},
+   {t:"コウは返せず<em>4枚</em>引いています。この間は<em>誰もカードを出せません</em>——割り込みもオヌスペも受け付けない、ルールブックでいう「アウトオブプレイ」です。",show:c=>{demoFloat(c.el("#seat1"),"+4枚","no");}}]},
   {stop:1,when:c=>c.myTurn&&c.legal.some(gr=>gr[0].color==="w"),say:[
-   {t:"ワイルドの効果は UNO と同じ。",show:c=>{demoTag(c.card("ワイルド"),"20点","no");}},
-   "ただし<em>1枚20点</em>。",
-   "点が低いほど勝つこのゲームでは、抱えると致命傷です。"]},
+   {t:"ワイルドの効果は UNO と同じ。ただし<em>1枚20点</em>——点が低いほど勝つこのゲームでは、抱えると致命傷です。出せるうちに出すのが定石。",show:c=>{demoTag(c.card("ワイルド"),"20点","no");}}]},
   {when:c=>c.myTurn&&c.legal.some(gr=>gr[0].color==="w")&&c.sel()===0,point:c=>c.card("ワイルド"),
    text:"矢印の<em>ワイルド</em>を選んでください。"},
   {when:c=>c.myTurn&&c.legal.some(gr=>gr[0].color==="w")&&c.sel()>0,point:c=>c.button("出す"),
@@ -1347,65 +1319,41 @@ const STEPS_UNO={
   {when:c=>c.myTurn&&c.me.hand.length>0,
    text:"ここからは同じ要領で。誰かが上がるまで続けてください。"},
   {stop:1,when:c=>c.g.phase==="over",say:[
-   {t:"引かされた枚数が、そのまま点差になります。",show:tagPoints},
-   "数字＝その数字、記号カード＝10点、ワイルド＝20点。",
-   "この表は右上の「ルール」からいつでも見られます。"]}
+   {t:"引かされた枚数がそのまま点差になります。<em>数字＝その数字、記号カード＝10点、ワイルド＝20点</em>。この表は右上の「ルール」からいつでも見られます。",show:tagPoints}]}
  ],
  4:[
   {stop:1,when:c=>c.myTurn&&c.me.hand.length===2,say:[
-   "このラウンドが ONU の心臓部です。",
-   "UNO の「ウノ！」にあたるのが<em>「オヌ！」</em>。",
-   "手札が<em>残り1枚</em>になったら宣言します。",
-   "なぜ宣言するのか。<em>「次で上がる」と全員に知らせる</em>ためです。",
-   "知らせるので、当然ねらわれます。ドロー2を押しつけられたり。",
-   "それでも宣言は義務。UNO との違いは2つ。",
-   "1つめ。<em>宣言できる時間が決まっている</em>（カードが出た直後の数秒間）。",
-   "2つめ。<em>宣言した状態が、特殊な上がりの前提条件になる</em>。",
-   "まず自分でやってみましょう。"]},
+   "このラウンドが ONU の心臓部です。UNO の「ウノ！」にあたるのが<em>「オヌ！」</em>。手札が<em>残り1枚</em>になったら宣言します。",
+   "なぜ宣言するのか——<em>「次で上がる」と全員に知らせる</em>ためです。当然ねらわれますが、それでも義務。",
+   "UNO との違いは2つ。<em>宣言できる時間が決まっている</em>ことと、<em>宣言した状態が特殊な上がりの前提条件になる</em>ことです。まず自分でやってみましょう。"]},
   {when:c=>c.myTurn&&c.me.hand.length===2&&c.sel()===0,point:c=>c.card("青5"),
    text:"矢印の<em>青5</em>を選んでください。出すと残り1枚です。"},
   {when:c=>c.myTurn&&c.me.hand.length===2&&c.sel()>0,point:c=>c.button("出す"),
    text:"<em>「出す」</em>を押します。"},
   {stop:1,when:c=>c.btn("オヌ！"),say:[
-   {t:"残り1枚になり、赤い<em>「オヌ！」</em>が出ました。",show:c=>{demoRing(c.button("オヌ！"),6);}},
-   {t:"同時に、卓の下の<em>金色のバー</em>が走り始めています。",show:c=>{demoRing(document.querySelector(".ip-track"),8);}},
-   "これが宣言の<em>受付時間</em>。バーが消えきる前に押すのがルールです。",
-   "いまは説明のため止めていますが、本番では数秒しかありません。",
-   "押し忘れると、他の人に指摘されて<em>4枚</em>引かされます。",
-   "誰にも気づかれずに自分の番が戻れば、1枚で済みます。"]},
+   {t:"残り1枚になり、赤い<em>「オヌ！」</em>と卓の下の<em>金色のバー</em>が現れました。これが宣言の<em>受付時間</em>です。",show:c=>{demoRing(c.button("オヌ！"),6);demoRing(document.querySelector(".ip-track"),8);}},
+   "バーが消えきる前に押すのがルール（いまは説明のため止めています）。押し忘れると指摘されて<em>4枚</em>、誰にも気づかれなければ1枚で済みます。"]},
   {when:c=>c.btn("オヌ！"),point:c=>c.button("オヌ！"),
    text:"矢印の<em>「オヌ！」</em>を押してください。"},
   {stop:1,when:c=>c.me.onu&&!c.myTurn,say:[
-   {t:"宣言できました。あなたの側に「オヌ」の印が付きます。",show:c=>{demoRing(c.el("#myOnu"),5);}},
-   "この状態を<em>オヌ状態</em>といいます。",
-   "第5ラウンドで使う<em>割り込み上がり</em>は、この状態が条件です。"]},
+   {t:"<em>オヌ状態</em>になりました。第5ラウンドで使う<em>割り込み上がり</em>は、この状態が条件です。",show:c=>{demoRing(c.el("#myOnu"),5);}}]},
   {stop:1,when:c=>c.btn2("指摘"),say:[
-   {t:"見てください。コウも残り1枚になりました。",show:c=>{demoRing(c.el("#seat1"));}},
-   "でも「オヌ！」と言っていません。<em>言い忘れです</em>。",
-   {t:"こういうとき、<em>あなたが指摘できます</em>。",show:c=>{const b=c.button2("指摘");if(b)demoRing(b,6);}},
-   "指摘すれば、コウは罰として<em>4枚</em>引かされます。",
-   "つまりこの宣言は、<em>相手のを見張る</em>ルールでもあるのです。"]},
+   {t:"コウも残り1枚になりましたが、「オヌ！」と言っていません。<em>言い忘れです</em>。",show:c=>{demoRing(c.el("#seat1"));}},
+   {t:"こういうとき<em>あなたが指摘できます</em>。指摘すればコウは<em>4枚</em>。この宣言は<em>相手のを見張る</em>ルールでもあるのです。",show:c=>{const b=c.button2("指摘");if(b)demoRing(b,6);}}]},
   {when:c=>c.btn2("指摘"),point:c=>c.button2("指摘"),
    text:"矢印の<em>「コウのオヌ忘れを指摘」</em>を押してください。"},
   {stop:1,when:c=>c.g.players[1].hand.length>=5,say:[
-   {t:"コウが<em>4枚</em>引かされました。",show:c=>{demoFloat(c.el("#seat1"),"+4枚","no");}},
-   "残り1枚から一気に5枚。宣言忘れがどれだけ痛いか分かります。",
-   "だから自分のときは、絶対に押し忘れないこと。"]},
+   {t:"コウが<em>4枚</em>引かされました。残り1枚から一気に5枚。宣言忘れの重さが分かります。",show:c=>{demoFloat(c.el("#seat1"),"+4枚","no");}}]},
   {when:c=>c.myTurn&&c.me.hand.length===1&&c.legal.length&&c.sel()===0,point:c=>c.playable(),
    text:"では最後の1枚。場は赤なので<em>赤7</em>が出せます。選んでください。"},
   {when:c=>c.myTurn&&c.me.hand.length===1&&c.sel()>0,point:c=>c.button("出す"),
    text:"<em>「出す」</em>で上がりです。"},
   {stop:1,when:c=>c.g.phase==="over",say:[
-   "宣言してから最後の1枚を出す——これが<em>オヌ上がり</em>。",
-   {t:"<em>−20点</em>。一番よく使う上がり方です。",show:c=>{demoFloat(c.el("#hand"),"−20点");}},
-   "宣言を忘れると、この−20点を取り逃がすことになります。"]}
+   {t:"宣言してから最後の1枚を出す<em>オヌ上がり</em>で<em>−20点</em>。一番よく使う上がり方です。宣言を忘れると、この−20点を取り逃がします。",show:c=>{demoFloat(c.el("#hand"),"−20点");}}]}
  ],
  5:[
   {stop:1,when:c=>c.myTurn&&c.me.hand.length===2,say:[
-   "ONU の目玉その1、<em>割り込み</em>。",
-   "場のカードと<em>色も数字も同じ</em>札は、",
-   "<em>自分の番でなくても出せます</em>。",
-   "受付はさっきの金色のバーが走っている間だけ。"]},
+   "ONU の目玉その1、<em>割り込み</em>。場のカードと<em>色も数字も同じ</em>札は、<em>自分の番でなくても出せます</em>。受付はさっきの金色のバーが走っている間だけ。"]},
   {when:c=>c.myTurn&&c.me.hand.length===2&&c.sel()===0,point:c=>c.card("青5"),
    text:"さっきと同じ形から。<em>青5</em>を選んでください。"},
   {when:c=>c.myTurn&&c.me.hand.length===2&&c.sel()>0,point:c=>c.button("出す"),
@@ -1413,9 +1361,8 @@ const STEPS_UNO={
   {when:c=>c.btn("オヌ！"),point:c=>c.button("オヌ！"),
    text:"残り1枚。<em>「オヌ！」</em>を押しておきましょう。"},
   {stop:1,when:c=>c.btn("割り込み上がり"),say:[
-   {t:"ミナが出したのは<em>赤7</em>。",show:c=>{demoRing(c.el("#discard"));}},
-   {t:"あなたの手札も<em>赤7</em>。色も数字も一致です。",show:c=>{demoLink(c.el("#discard"),c.playable(),"色も数字も同じ");}},
-   "オヌ状態なので、このまま順番を飛ばして上がれます。"]},
+   {t:"ミナが出したのは<em>赤7</em>。あなたの手札も<em>赤7</em>——<em>色も数字も一致</em>しました。",show:c=>{demoRing(c.el("#discard"));}},
+   {t:"オヌ状態なので、このまま順番を飛ばして上がれます。",show:c=>{demoLink(c.el("#discard"),c.playable(),"色も数字も同じ");}}]},
   {when:c=>c.btn("割り込み上がり"),point:c=>c.button("割り込み上がり"),
    text:"矢印の<em>「割り込み上がり！」</em>を押してください。"},
   {when:c=>c.myTurn&&c.me.hand.length>0,
@@ -1423,26 +1370,18 @@ const STEPS_UNO={
  ],
  6:[
   {stop:1,when:c=>c.g.phase==="turn"&&c.g.turn===1,say:[
-   "ONU の目玉その2、<em>オヌスペ</em>。",
-   {t:"あなたの手札は赤4と黄5。",show:tagPoints},
-   {t:"点数を足すと<em>9点</em>です。",show:c=>{tagPoints(c);demoFloat(c.el("#hand"),"合計 9点");}},
-   "この合計と<em>場に出た札の点数</em>が一致すると、",
-   "<em>順番に関係なく手札を全部出して上がれます</em>。",
-   "これから出る札の点数に注目してください。"]},
+   {t:"ONU の目玉その2、<em>オヌスペ</em>。<em>手札（2枚以上）の合計点</em>が<em>場に出たカードの点数</em>と一致したら、順番に関係なく手札を全部出して上がれます。",show:tagPoints},
+   {t:"あなたの手札は赤4と黄5で<em>合計9点</em>。これから場に出る札の<em>点数</em>を見ていてください。",show:c=>{tagPoints(c);demoFloat(c.el("#hand"),"合計 9点");}}]},
   {stop:1,when:c=>c.btn("オヌスペ"),say:[
-   {t:"コウが出したのは<em>青9</em>＝<em>9点</em>。",show:c=>{demoRing(c.el("#discard"));demoTag(c.el("#discard"),"9点","pt");}},
-   {t:"手札の合計と<em>ぴったり同じ</em>です。",show:c=>{tagPoints(c);demoLink(c.el("#discard"),c.el("#hand"),"9点 = 9点");}},
-   "自分が出した札には使えません。狙えるのは、札が出た直後の数秒間だけ。"]},
+   {t:"コウが出したのは<em>青9＝9点</em>。手札の合計と一致しました。",show:c=>{demoRing(c.el("#discard"));demoTag(c.el("#discard"),"9点","pt");}},
+   {t:"自分が出した札には使えません。狙えるのは、札が出た直後の受付時間だけです。",show:c=>{tagPoints(c);demoLink(c.el("#discard"),c.el("#hand"),"9点 = 9点");}}]},
   {when:c=>c.btn("オヌスペ"),point:c=>c.button("オヌスペ"),
    text:"矢印の<em>「オヌスペ！」</em>を押してください。"},
   {when:c=>c.myTurn&&c.me.hand.length>0,
    text:"ここからは同じ要領で。誰かが上がるまで続けてください。"},
   {stop:1,when:c=>c.g.phase==="over",say:[
-   "オヌスペも<em>−20点</em>。",
-   "他人のオヌスペには<em>返し・破り</em>もあります。",
-   "返した人 −50点、返された人 +50点。連続すると倍々。",
-   "ここが大逆転の仕掛けです（詳細は右上の「ルール」）。",
-   "最後に合計を見ましょう。<em>一番低い人が勝ち</em>です。"]}
+   "オヌスペは<em>−20点</em>。他人のオヌスペには<em>返し・破り</em>もあり、返した人 −50点／返された人 +50点、連続すると倍々になります。",
+   "ここが大逆転の仕掛けです（詳細は右上の「ルール」）。最後に合計を見ましょう——<em>一番低い人が勝ち</em>です。"]}
  ]
 };
 
@@ -1458,71 +1397,47 @@ const LESSONS_INTRO={
 const STEPS_INTRO={
  1:[
   {stop:1,when:c=>c.myTurn&&c.me.hand.length===3,say:[
-   "ONU は、<em>4人</em>で遊ぶカードゲームです。",
-   {t:"上の3人が相手。あなたはいちばん下です。",show:c=>{demoTagTop(c.el("#seat1"),"コウ");demoTagTop(c.el("#seat2"),"ミナ");demoTagTop(c.el("#seat3"),"レン");demoTagTop(c.el("#hand"),"あなた");}},
-   "順番に、カードを1枚ずつ出していきます。",
-   "<em>先に手札を出しきった人</em>が、そのラウンドの上がりです。",
-   "まず、画面の見かたから。",
-   {t:"下に並んでいるのが<em>あなたの手札</em>。いま3枚です。",show:c=>{demoRing(c.el("#hand"));}},
-   {t:"真ん中にあるのが<em>場（ば）</em>。ここに出していきます。",show:c=>{demoRing(c.el("#discard"));}},
-   {t:"いま場に出ているのは<em>赤の4</em>です。",show:c=>{demoTag(c.el("#discard"),"赤の4");}},
-   {t:"その左が<em>山（やま）</em>。まだ配っていないカードです。",show:c=>{demoRing(c.el("#deckslot"));}}]},
+   {t:"ONU は<em>4人</em>で遊ぶカードゲームです。上の3人が相手で、あなたはいちばん下。順番にカードを1枚ずつ出していきます。",show:c=>{demoTagTop(c.el("#seat1"),"コウ");demoTagTop(c.el("#seat2"),"ミナ");demoTagTop(c.el("#seat3"),"レン");demoTagTop(c.el("#hand"),"あなた");}},
+   "<em>先に手札を出しきった人</em>が、そのラウンドの上がりです。まず、画面の見かたから見ていきましょう。",
+   {t:"下に並んでいるのが<em>あなたの手札</em>。いま3枚あります。これを出しきるのが目標です。",show:c=>{demoRing(c.el("#hand"));}},
+   {t:"真ん中にあるのが<em>場（ば）</em>。ここにカードを出していきます。いま出ているのは<em>赤の4</em>。",show:c=>{demoRing(c.el("#discard"));demoTag(c.el("#discard"),"赤の4");}},
+   {t:"その左が<em>山（やま）</em>。まだ配っていないカードです。出せる札が無いときは、ここから1枚引きます。",show:c=>{demoRing(c.el("#deckslot"));}}]},
   {stop:1,when:c=>c.myTurn&&c.me.hand.length===3,say:[
-   "カードを出せる条件は、<em>たった1つ</em>。",
-   "場のカードと<em>色が同じ</em>か、<em>数字が同じ</em>なら出せます。",
-   "手札を1枚ずつ見てみましょう。",
-   {t:"<em>青の4</em>。色は赤じゃないけれど……",show:c=>{demoRing(c.card("青4"),4);}},
-   {t:"<em>数字が同じ4</em>。だから出せます。",show:c=>{demoLink(c.el("#discard"),c.card("青4"),"4 = 4");demoTag(c.card("青4"),"出せる");}},
-   {t:"<em>黄の2</em>は、色も数字も違う。出せません。",show:c=>{demoTag(c.card("黄2"),"出せない","no");}},
-   {t:"<em>緑の9</em>も同じです。",show:c=>{demoTag(c.card("緑9"),"出せない","no");}},
-   "出せる札は<em>明るく</em>、出せない札は<em>暗く</em>表示されています。"]},
+   "カードを出せる条件は<em>たった1つ</em>。場のカードと<em>色が同じ</em>か、<em>数字が同じ</em>なら出せます。手札を1枚ずつ見てみましょう。",
+   {t:"<em>青の4</em>は色こそ違いますが<em>数字が同じ4</em>。だから出せます。",show:c=>{demoLink(c.el("#discard"),c.card("青4"),"4 = 4");demoTag(c.card("青4"),"出せる");}},
+   {t:"<em>黄の2</em>と<em>緑の9</em>は、色も数字も合いません。<em>出せない札は暗く</em>表示されています。",show:c=>{demoTag(c.card("黄2"),"出せない","no");demoTag(c.card("緑9"),"出せない","no");}}]},
   {when:c=>c.myTurn&&c.me.hand.length===3&&c.sel()===0,point:c=>c.card("青4"),
    text:"では、矢印の<em>青の4</em>をクリックしてください。"},
   {when:c=>c.myTurn&&c.me.hand.length===3&&c.sel()>0,point:c=>c.button("出す"),
-   text:"選べました。次は<em>「出す」</em>を押します。"},
+   text:"選べました。続けて<em>「出す」</em>を押します。"},
   {stop:1,when:c=>c.g.phase==="react"&&c.g.lastPlay&&c.g.lastPlay.by===0,say:[
-   {t:"出せました。",show:c=>{demoRing(c.el("#discard"));}},
-   "場のカードが<em>青の4</em>に変わりました。",
-   "次の人は「青」か「4」に合わせることになります。",
-   "卓の下の細いバーは、あとのラウンドで使います。いまは大丈夫。"]},
+   {t:"出せました。場のカードが<em>青の4</em>に変わったので、次の人は「青」か「4」に合わせることになります。",show:c=>{demoRing(c.el("#discard"));}},
+   "卓の下で走っている細いバーは、あとのラウンドで使います。いまは気にしなくて大丈夫です。"]},
   {when:c=>c.myTurn&&!c.g.canPass&&!c.legal.length,point:c=>c.button("山から1枚引く"),
-   text:"手札がどれも合いません。<em>山から1枚引きます</em>。"},
+   text:"手札がどれも場と合いません。こういうときは<em>山から1枚引きます</em>。"},
   {when:c=>c.myTurn&&c.g.canPass&&c.legal.length,point:c=>c.sel()?c.button("出す"):c.playable(),
    text:"引いた札が合いました。<em>引いた札はその場で出せます</em>。"},
   {when:c=>c.myTurn&&c.me.hand.length>0,
    text:"ここからは同じ要領で。出せる札を出す、無ければ引く。"},
   {stop:1,when:c=>c.g.phase==="over",say:[
-   "誰かが手札を出しきったので、ラウンド終了です。",
-   "ここが、このゲームで一番大事なところ。",
-   "<em>点数は、少ないほうが勝ち</em>です。",
+   "誰かが手札を出しきったので、ラウンド終了です。ここが、このゲームで一番大事なところ——<em>点数は少ないほうが勝ち</em>です。",
    {t:"上がった人は<em>−20点</em>。マイナスをもらえます。",show:c=>{const h=c.g.history[c.g.history.length-1];if(h)demoFloat(c.seat(h.winner),"−20点");}},
-   {t:"上がれなかった人は、<em>残った手札の点数</em>が失点。",show:tagPoints},
-   {t:"数字の札は、<em>その数字がそのまま点数</em>です。",show:tagPoints},
-   "だから、重い札を持ったまま終わるのが一番損なのです。"]}
+   {t:"上がれなかった人は、<em>残った手札の点数がそのまま失点</em>。数字の札はその数字が点数です。だから重い札を持ったまま終わるのが一番損なのです。",show:tagPoints}]}
  ],
  2:[
   {stop:1,when:c=>c.myTurn&&c.me.hand.length===3,say:[
-   "カードには数字のほかに、<em>記号の札</em>があります。",
-   "今回は2種類、覚えましょう。",
-   {t:"手札のこれが<em>スキップ</em>。",show:c=>{demoRing(c.card("緑スキップ"),4);}},
-   "出すと、<em>次の人の番が飛ばされます</em>。",
+   {t:"カードには数字のほかに<em>記号の札</em>があります。手札のこれが<em>スキップ</em>。出すと<em>次の人の番が飛ばされます</em>。",show:c=>{demoRing(c.card("緑スキップ"),4);}},
    {t:"場は緑の2。この札は緑——<em>色が同じ</em>なので出せます。",show:c=>{demoLink(c.el("#discard"),c.card("緑スキップ"),"緑 = 緑");}}]},
   {when:c=>c.myTurn&&c.me.hand.length===3&&c.sel()===0,point:c=>c.card("緑スキップ"),
    text:"矢印の<em>緑のスキップ</em>を選んでください。"},
   {when:c=>c.myTurn&&c.me.hand.length===3&&c.sel()>0,point:c=>c.button("出す"),
-   text:"<em>「出す」</em>を押します。順番がどう動くか見てください。"},
+   text:"<em>「出す」</em>を押して、順番がどう動くか見てください。"},
   {stop:1,when:c=>c.g.phase==="turn"&&c.g.turn===2,say:[
-   {t:"順番が<em>コウを飛び越して</em>ミナに移りました。",show:c=>{demoTagTop(c.el("#seat1"),"飛ばされた","no");demoRing(c.el("#seat2"));}},
-   "これがスキップの効果です。"]},
+   {t:"順番が<em>コウを飛び越して</em>ミナに移りました。これがスキップの効果です。（2枚同時に出せば2人ぶん飛ばせます）",show:c=>{demoTagTop(c.el("#seat1"),"飛ばされた","no");demoRing(c.el("#seat2"));}}]},
   {stop:1,when:c=>c.g.dir===-1,say:[
-   {t:"今度はミナが<em>リバース</em>を出しました。",show:c=>{demoRing(c.el("#seat2"));}},
-   {t:"<em>回る順番が逆</em>になります。",show:c=>{demoRing(c.el("#dial"),0);}},
-   "おかげで、すぐあなたの番が戻ってきます。"]},
+   {t:"今度はミナが<em>リバース</em>を出しました。<em>回る順番が逆</em>になり、すぐあなたの番が戻ってきます。",show:c=>{demoRing(c.el("#dial"),0);}}]},
   {stop:1,when:c=>c.myTurn&&c.me.hand.length===2,say:[
-   "ここで、このゲームならではのルール。",
-   "<em>同じ数字の札は、何枚でも一度に出せます</em>。",
-   {t:"手札は赤の7と青の7。色は違うけれど<em>どちらも7</em>。",show:c=>{demoTag(c.card("赤7"),"7");demoTag(c.card("青7"),"7");}},
-   "2枚まとめて出せば、手札がゼロ＝上がりです。"]},
+   {t:"ここでこのゲームならではのルール。<em>同じ数字の札は、何枚でも一度に出せます</em>。赤の7と青の7は色こそ違いますが<em>どちらも7</em>。2枚まとめて出せば手札がゼロ＝上がりです。",show:c=>{demoTag(c.card("赤7"),"7");demoTag(c.card("青7"),"7");}}]},
   {when:c=>c.myTurn&&c.me.hand.length===2&&c.sel()===0,point:c=>c.card("赤7"),
    text:"まず<em>赤の7</em>を選びます。"},
   {when:c=>c.myTurn&&c.me.hand.length===2&&c.sel()===1,point:c=>c.card("青7"),
@@ -1530,103 +1445,63 @@ const STEPS_INTRO={
   {when:c=>c.myTurn&&c.me.hand.length===2&&c.sel()===2,point:c=>c.button("出す"),
    text:"<em>「出す 2枚」</em>を押してください。"},
   {stop:1,when:c=>c.g.phase==="over",say:[
-   "手札を出しきりました。",
    "同じ数字を重ねて上がる形を<em>重ね上がり</em>といいます。",
-   "もう一つ、大事なルール。",
-   "<em>最後に出す札に、記号の札は使えません</em>。",
-   "だから緑のスキップを先に出しておいたのが正解でした。"]}
+   "もう一つ大事なルール——<em>最後に出す札に、記号の札は使えません</em>。だから緑のスキップを先に出しておいたのが正解でした。"]}
  ],
  3:[
   {stop:1,when:c=>c.myTurn&&c.g.pending,say:[
-   "記号の札を、あと2種類。",
-   {t:"レンが<em>ドロー2</em>を出しました。",show:c=>{demoRing(c.el("#discard"));}},
-   "これを出されると、<em>次の人が2枚引かされます</em>。",
-   "次はあなたの番。……ですが、",
-   {t:"あなたも<em>同じドロー2</em>を持っています。",show:c=>{demoRing(c.card("黄ドロー2"),4);}},
-   "<em>同じ札を重ねれば、引く役目を次の人に押しつけられます</em>。"]},
+   {t:"記号の札をあと2種類。レンが<em>ドロー2</em>を出しました。出されると<em>次の人が2枚引かされます</em>。次はあなたの番です。",show:c=>{demoRing(c.el("#discard"));}},
+   {t:"でも、あなたも<em>同じドロー2</em>を持っています。<em>同じ札を重ねれば、引く役目を次の人に押しつけられます</em>。",show:c=>{demoRing(c.card("黄ドロー2"),4);}}]},
   {when:c=>c.myTurn&&c.g.pending&&c.sel()===0,point:c=>c.card("黄ドロー2"),
    text:"矢印の<em>黄のドロー2</em>を選んでください。"},
   {when:c=>c.myTurn&&c.g.pending&&c.sel()>0,point:c=>c.button("出す"),
    text:"<em>「出す」</em>で、コウに押しつけます。"},
   {stop:1,when:c=>c.g.phase==="out",say:[
-   "コウには、返せる札がありませんでした。",
-   {t:"2枚＋2枚で<em>4枚</em>引いています。",show:c=>{demoFloat(c.el("#seat1"),"+4枚","no");}},
-   "誰かが引いている間は、<em>ほかの人もカードを出せません</em>。"]},
+   {t:"コウには返せる札がありませんでした。2枚＋2枚で<em>4枚</em>引いています。誰かが引いている間は、<em>ほかの人もカードを出せません</em>。",show:c=>{demoFloat(c.el("#seat1"),"+4枚","no");}}]},
   {stop:1,when:c=>c.myTurn&&c.legal.some(gr=>gr[0].color==="w"),say:[
-   {t:"手札の黒い札が<em>ワイルド</em>。",show:c=>{demoRing(c.card("ワイルド"),4);}},
-   "<em>場の色に関係なく、いつでも出せます</em>。",
-   "しかも、<em>次の色を自分で決められます</em>。"]},
+   {t:"手札の黒い札が<em>ワイルド</em>。<em>場の色に関係なくいつでも出せて、次の色を自分で決められる</em>万能札です。",show:c=>{demoRing(c.card("ワイルド"),4);}}]},
   {when:c=>c.myTurn&&c.legal.some(gr=>gr[0].color==="w")&&c.sel()===0,point:c=>c.card("ワイルド"),
    text:"矢印の<em>ワイルド</em>を選んでください。"},
   {when:c=>c.myTurn&&c.legal.some(gr=>gr[0].color==="w")&&c.sel()>0,point:c=>c.button("出す"),
    text:"<em>「出す」</em>を押し、次の色を選びます。"},
   {when:c=>c.myTurn&&c.me.hand.length>0,
-   text:"ここからは同じ要領で。誰かが上がるまで続けてください。"},
+   text:"ここからは同じ要領で進めてください。"},
   {stop:1,when:c=>c.g.phase==="over",say:[
-   "ここで、カードの<em>点数</em>を覚えましょう。",
-   {t:"<em>数字の札</em>は、その数字がそのまま点数です。",show:tagPoints},
-   "<em>記号の札</em>（スキップ・リバース・ドロー2）は10点。",
-   "<em>ワイルド</em>は20点。いちばん重い札です。",
-   "点は少ないほうが良いので、重い札は早めに出すのが得です。"]}
+   {t:"ここでカードの<em>点数</em>を覚えましょう。<em>数字の札はその数字がそのまま点数</em>、<em>記号の札は10点</em>、<em>ワイルドは20点</em>です。",show:tagPoints},
+   "点は少ないほうが良いので、引かされて手札が増えるほど不利。重いワイルドは早めに出すのが得だと分かります。"]}
  ],
  4:[
   {stop:1,when:c=>c.myTurn&&c.me.hand.length===2,say:[
-   "このラウンドが、このゲームで一番大事なところです。",
-   "手札が<em>残り1枚</em>になったら、",
-   "<em>「オヌ！」と声に出して宣言</em>しなければいけません。",
-   "ゲームの名前は、この宣言から来ています。",
-   "なぜ宣言するのか。",
-   "<em>「次で上がるぞ」と全員に知らせる</em>ためです。",
-   "知らせるので、当然ほかの3人からねらわれます。",
-   "それでも宣言は義務。忘れると罰があります。",
-   "まずは自分でやってみましょう。"]},
+   "このラウンドが、このゲームで一番大事なところです。手札が<em>残り1枚</em>になったら、<em>「オヌ！」と声に出して宣言</em>しなければいけません。ゲームの名前は、この宣言から来ています。",
+   "なぜ宣言するのか。<em>「次で上がるぞ」と全員に知らせる</em>ためです。知らせるので当然ねらわれますが、それでも宣言は義務。忘れると罰があります。まずは自分でやってみましょう。"]},
   {when:c=>c.myTurn&&c.me.hand.length===2&&c.sel()===0,point:c=>c.card("青5"),
    text:"手札は2枚。矢印の<em>青5</em>を選んでください。"},
   {when:c=>c.myTurn&&c.me.hand.length===2&&c.sel()>0,point:c=>c.button("出す"),
    text:"<em>「出す」</em>を押すと、残り1枚になります。"},
   {stop:1,when:c=>c.btn("オヌ！"),say:[
-   {t:"赤い<em>「オヌ！」</em>のボタンが現れました。",show:c=>{demoRing(c.button("オヌ！"),6);}},
-   {t:"そして卓の下に、<em>金色のバー</em>。",show:c=>{demoRing(document.querySelector(".ip-track"),8);}},
-   "これが宣言の<em>受付時間</em>です。",
-   "本当は、このバーが消えきる前に押さなければいけません。",
-   "いまは説明のため、止めてあります。",
-   "押し忘れると、ほかの人に指摘されて<em>4枚</em>引かされます。"]},
+   {t:"赤い<em>「オヌ！」</em>のボタンと、卓の下の<em>金色のバー</em>が現れました。これが宣言の<em>受付時間</em>です。",show:c=>{demoRing(c.button("オヌ！"),6);demoRing(document.querySelector(".ip-track"),8);}},
+   "本当は、このバーが消えきる前に押さなければいけません（いまは説明のため止めてあります）。押し忘れると、ほかの人に指摘されて<em>4枚</em>引かされます。"]},
   {when:c=>c.btn("オヌ！"),point:c=>c.button("オヌ！"),
    text:"矢印の<em>「オヌ！」</em>を押してください。"},
   {stop:1,when:c=>c.me.onu&&!c.myTurn,say:[
-   {t:"宣言できました。あなたの側に「オヌ」の印が付いています。",show:c=>{demoRing(c.el("#myOnu"),5);}},
-   "この状態を<em>オヌ状態</em>といいます。",
-   "ここまで来て、初めて最後の1枚を出して上がれます。"]},
+   {t:"宣言できました。あなたの側に「オヌ」の印が付いています。この状態を<em>オヌ状態</em>といい、ここまで来て初めて最後の1枚を出して上がれます。",show:c=>{demoRing(c.el("#myOnu"),5);}}]},
   {stop:1,when:c=>c.btn2("指摘"),say:[
-   {t:"見てください。コウも残り1枚になりました。",show:c=>{demoRing(c.el("#seat1"));}},
-   "でも「オヌ！」と言っていません。<em>言い忘れです</em>。",
-   {t:"こういうとき、<em>あなたが指摘できます</em>。",show:c=>{const b=c.button2("指摘");if(b)demoRing(b,6);}},
-   "指摘すると、コウは罰として<em>4枚</em>引かされます。",
-   "つまりこの宣言は、<em>相手のを見張る</em>ルールでもあるのです。"]},
+   {t:"見てください。コウも残り1枚になりました。でも「オヌ！」と言っていません。<em>言い忘れです</em>。",show:c=>{demoRing(c.el("#seat1"));}},
+   {t:"こういうとき、<em>あなたが指摘できます</em>。指摘すると、コウは罰として<em>4枚</em>引かされます。つまりこの宣言は、<em>相手のを見張る</em>ルールでもあるのです。",show:c=>{const b=c.button2("指摘");if(b)demoRing(b,6);}}]},
   {when:c=>c.btn2("指摘"),point:c=>c.button2("指摘"),
    text:"矢印の<em>「コウのオヌ忘れを指摘」</em>を押してください。"},
   {stop:1,when:c=>c.g.players[1].hand.length>=5,say:[
-   {t:"コウが<em>4枚</em>引かされました。",show:c=>{demoFloat(c.el("#seat1"),"+4枚","no");}},
-   "残り1枚だったのが、一気に5枚。",
-   "宣言忘れがどれだけ痛いか分かります。",
-   "だから自分のときは、絶対に押し忘れないこと。"]},
+   {t:"コウが<em>4枚</em>引かされました。残り1枚だったのが一気に5枚。宣言忘れがどれだけ痛いか分かります。だから自分のときは、絶対に押し忘れないこと。",show:c=>{demoFloat(c.el("#seat1"),"+4枚","no");}}]},
   {when:c=>c.myTurn&&c.me.hand.length===1&&c.legal.length&&c.sel()===0,point:c=>c.playable(),
    text:"では最後の1枚。場は赤なので<em>赤7</em>が出せます。選んでください。"},
   {when:c=>c.myTurn&&c.me.hand.length===1&&c.sel()>0,point:c=>c.button("出す"),
    text:"<em>「出す」</em>で上がりです。"},
   {stop:1,when:c=>c.g.phase==="over",say:[
-   "上がりました。",
-   "宣言してから最後の1枚を出す——これが<em>オヌ上がり</em>。",
-   {t:"<em>−20点</em>です。",show:c=>{demoFloat(c.el("#hand"),"−20点");}},
-   "点が少ないほど勝ちなので、大きな得になります。",
-   "宣言を忘れると、この−20点を取り逃がします。"]}
+   {t:"宣言してから最後の1枚を出す——これが<em>オヌ上がり</em>で<em>−20点</em>です。点が少ないほど勝ちなので大きな得になります。宣言を忘れると、この−20点を取り逃がします。",show:c=>{demoFloat(c.el("#hand"),"−20点");}}]}
  ],
  5:[
   {stop:1,when:c=>c.myTurn&&c.me.hand.length===2,say:[
-   "このゲームには、<em>順番を待たずに出せる</em>場面があります。",
-   "条件は、場のカードと<em>色も数字も同じ</em>札を持っていること。",
-   "これを<em>割り込み</em>といいます。",
-   "実際にやってみましょう。"]},
+   "このゲームには、<em>順番を待たずに出せる</em>場面があります。条件は、場のカードと<em>色も数字も同じ</em>札を持っていること。これを<em>割り込み</em>といいます。実際にやってみましょう。"]},
   {when:c=>c.myTurn&&c.me.hand.length===2&&c.sel()===0,point:c=>c.card("青5"),
    text:"まず<em>青5</em>を選んでください。"},
   {when:c=>c.myTurn&&c.me.hand.length===2&&c.sel()>0,point:c=>c.button("出す"),
@@ -1634,38 +1509,27 @@ const STEPS_INTRO={
   {when:c=>c.btn("オヌ！"),point:c=>c.button("オヌ！"),
    text:"残り1枚。<em>「オヌ！」</em>を押しておきましょう。"},
   {stop:1,when:c=>c.btn("割り込み上がり"),say:[
-   {t:"ミナが出したのは<em>赤の7</em>。",show:c=>{demoRing(c.el("#discard"));demoTag(c.el("#discard"),"赤の7");}},
-   {t:"あなたの手札も<em>赤の7</em>。",show:c=>{demoTag(c.playable(),"赤の7");}},
-   {t:"<em>色も数字も同じ</em>。条件がそろいました。",show:c=>{demoLink(c.el("#discard"),c.playable(),"色も数字も同じ");}},
-   "自分の番でなくても、いま出せます。"]},
+   {t:"場を見てください。ミナが出したのは<em>赤の7</em>。あなたの手札も<em>赤の7</em>です。",show:c=>{demoRing(c.el("#discard"));demoTag(c.el("#discard"),"赤の7");}},
+   {t:"<em>色も数字も同じ</em>——条件がそろいました。自分の番でなくても、いま出せます。",show:c=>{demoLink(c.el("#discard"),c.playable(),"色も数字も同じ");}}]},
   {when:c=>c.btn("割り込み上がり"),point:c=>c.button("割り込み上がり"),
    text:"矢印の<em>「割り込み上がり！」</em>を押してください。"},
   {when:c=>c.myTurn&&c.me.hand.length>0,
-   text:"ここからは同じ要領で。誰かが上がるまで続けてください。"}
+   text:"ここからは同じ要領で。"}
  ],
  6:[
   {stop:1,when:c=>c.g.phase==="turn"&&c.g.turn===1,say:[
-   "最後は、このゲームで一番派手なルール。",
-   "<em>オヌスペ</em>といいます。",
-   {t:"あなたの手札は、赤の4と黄の5。",show:tagPoints},
-   {t:"点数を足すと<em>9点</em>です。",show:c=>{tagPoints(c);demoFloat(c.el("#hand"),"合計 9点");}},
-   "この合計を覚えておいてください。",
-   "これから場に出る札の<em>点数</em>に注目です。"]},
+   {t:"最後は、このゲームで一番派手なルール<em>オヌスペ</em>。あなたの手札は、赤の4と黄の5です。",show:tagPoints},
+   {t:"点数を足すと<em>9点</em>。この合計を覚えたまま、これから場に出る札の<em>点数</em>に注目してください。",show:c=>{tagPoints(c);demoFloat(c.el("#hand"),"合計 9点");}}]},
   {stop:1,when:c=>c.btn("オヌスペ"),say:[
-   {t:"コウが出したのは<em>青の9</em>。",show:c=>{demoRing(c.el("#discard"));}},
-   {t:"9の札は<em>9点</em>。",show:c=>{demoTag(c.el("#discard"),"9点","pt");}},
-   {t:"あなたの手札の合計と<em>ぴったり同じ</em>です。",show:c=>{tagPoints(c);demoLink(c.el("#discard"),c.el("#hand"),"9点 = 9点");}},
-   "こうなると、<em>手札を全部出して上がれます</em>。",
-   "順番は関係ありません。"]},
+   {t:"コウが出したのは<em>青の9</em>＝<em>9点</em>。あなたの手札の合計と<em>ぴったり同じ</em>です。",show:c=>{demoRing(c.el("#discard"));demoTag(c.el("#discard"),"9点","pt");}},
+   {t:"こうなると、<em>順番に関係なく手札を全部出して上がれます</em>。",show:c=>{tagPoints(c);demoLink(c.el("#discard"),c.el("#hand"),"9点 = 9点");}}]},
   {when:c=>c.btn("オヌスペ"),point:c=>c.button("オヌスペ"),
    text:"矢印の<em>「オヌスペ！」</em>を押してください。"},
   {when:c=>c.myTurn&&c.me.hand.length>0,
-   text:"ここからは同じ要領で。誰かが上がるまで続けてください。"},
+   text:"ここからは同じ要領で。"},
   {stop:1,when:c=>c.g.phase==="over",say:[
-   "オヌスペも<em>−20点</em>。",
-   "これで、上がり方は一通りです。",
-   "最後に、6ラウンドの合計を見ましょう。",
-   "<em>合計点が一番低い人が勝ち</em>です。"]}
+   "オヌスペも<em>−20点</em>。これで、上がり方は一通りです。",
+   "最後に、6ラウンドの合計を見ましょう。<em>合計点が一番低い人が勝ち</em>です。"]}
  ]
 };
 /* 説明は1文ずつ。クリックで文字送りを飛ばし、もう一度で次の文へ。 */
