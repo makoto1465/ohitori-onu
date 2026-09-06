@@ -42,8 +42,8 @@ button:focus-visible{outline:2px solid var(--brass-hot);outline-offset:3px}
   border:1px solid var(--edge);border-radius:999px;padding:3px 11px;background:rgba(10,30,26,.7);
   white-space:nowrap;font-variant-numeric:tabular-nums}
 .chip b{color:var(--brass);font-weight:700}
-.tbtn{background:rgba(10,30,26,.7);border:1px solid var(--edge);border-radius:999px;padding:4px 13px;
-  font-size:12px;color:var(--ivory-2);transition:.16s}
+.tbtn{background:rgba(10,30,26,.7);border:1px solid var(--edge);border-radius:999px;padding:5px 14px;
+  font-size:13px;color:var(--ivory-2);transition:.16s}
 .tbtn:hover{border-color:var(--brass);color:var(--brass-hot)}
 
 /* ═══ フェルト卓 ═══ */
@@ -188,10 +188,10 @@ button.card.sel{transform:rotate(0deg) translateY(-32px) scale(1.05);z-index:8;
 
 /* ═══ 操作 ═══ */
 .ctl{display:flex;gap:9px;flex-wrap:wrap;align-items:center;justify-content:center;min-height:40px}
-.hint{font-size:12px;color:rgba(241,237,226,.55);text-align:center;min-height:20px;margin-top:2px}
+.hint{font-size:13.5px;color:rgba(241,237,226,.6);text-align:center;min-height:20px;margin-top:4px}
 .hint b{color:var(--brass-hot)}
 .btn{border:1px solid rgba(217,180,95,.4);background:rgba(10,26,22,.72);border-radius:999px;
-  padding:9px 20px;font-weight:700;font-size:13px;transition:.16s;color:var(--ivory)}
+  padding:11px 22px;font-weight:700;font-size:15px;transition:.16s;color:var(--ivory)}
 .btn:hover:not(:disabled){border-color:var(--brass-hot);color:var(--brass-hot);transform:translateY(-2px);
   box-shadow:0 8px 20px -10px var(--brass)}
 .btn:disabled{opacity:.3;cursor:default}
@@ -297,22 +297,23 @@ body.holding #ctl{opacity:.45}
   display:grid;place-items:center;padding:18px;z-index:95}
 .veil[hidden]{display:none}
 .sheet{background:linear-gradient(180deg,var(--panel-2),var(--panel));
-  border:1px solid rgba(217,180,95,.28);border-radius:14px;max-width:640px;width:100%;max-height:88vh;
-  overflow-y:auto;padding:24px 26px 26px;box-shadow:0 40px 90px -30px #000;animation:rise .3s}
+  border:1px solid rgba(217,180,95,.28);border-radius:14px;max-width:680px;width:100%;max-height:88vh;
+  overflow-y:auto;padding:26px 28px 28px;box-shadow:0 40px 90px -30px #000;animation:rise .3s}
 @keyframes rise{from{opacity:0;transform:translateY(14px)}}
-.sheet h2{font-family:"Dela Gothic One",sans-serif;font-weight:400;font-size:23px;margin:0 0 6px;text-wrap:balance}
-.sheet h3{font-size:11.5px;letter-spacing:.18em;color:var(--brass);margin:20px 0 7px;font-weight:700}
-.sheet p{margin:0 0 10px;color:var(--ivory-2);max-width:60ch}
-.sheet ul{margin:0 0 10px;padding-left:1.15em;color:var(--ivory-2)}
-.sheet li{margin-bottom:4px}
-.sheet .lead{color:var(--ivory);font-size:13.5px}
-.kicker{font-family:"Roboto Mono",monospace;font-size:10px;letter-spacing:.24em;color:var(--ivory-3);margin-bottom:9px}
+.sheet h2{font-family:"Dela Gothic One",sans-serif;font-weight:400;font-size:27px;margin:0 0 10px;text-wrap:balance;line-height:1.4}
+.sheet h3{font-size:13.5px;letter-spacing:.14em;color:var(--brass);margin:22px 0 9px;font-weight:700}
+.sheet p{margin:0 0 12px;color:var(--ivory-2);max-width:60ch;font-size:16px;line-height:1.9}
+.sheet ul{margin:0 0 12px;padding-left:1.2em;color:var(--ivory-2);font-size:16px;line-height:1.9}
+.sheet li{margin-bottom:7px}
+.sheet .lead{color:var(--ivory);font-size:18px;line-height:1.85}
+.kicker{font-family:"Roboto Mono",monospace;font-size:11.5px;letter-spacing:.22em;color:var(--ivory-3);margin-bottom:10px}
+.sheet .note{font-size:14px;line-height:1.9;color:var(--ivory-3)}
 .rowbtns{display:flex;gap:9px;flex-wrap:wrap;margin-top:20px}
-table{border-collapse:collapse;width:100%;font-family:"Roboto Mono",monospace;font-size:12px;
+table{border-collapse:collapse;width:100%;font-family:"Roboto Mono",monospace;font-size:14px;
   font-variant-numeric:tabular-nums}
-th,td{border-bottom:1px solid rgba(217,180,95,.16);padding:6px;text-align:right}
+th,td{border-bottom:1px solid rgba(217,180,95,.16);padding:8px 7px;text-align:right}
 th:first-child,td:first-child{text-align:left;font-family:"Zen Kaku Gothic New",sans-serif}
-thead th{color:var(--ivory-3);font-weight:500;font-size:10.5px;letter-spacing:.1em}
+thead th{color:var(--ivory-3);font-weight:500;font-size:12px;letter-spacing:.08em}
 tfoot td{border-top:2px solid rgba(217,180,95,.4);border-bottom:none;font-weight:700;padding-top:9px}
 td.win{color:var(--brass);font-weight:700}
 .neg{color:#59D08C}
@@ -324,17 +325,25 @@ td.win{color:var(--brass);font-weight:700}
 
 @media (max-width:760px){
   :root{--cardw:58px}
-  .room{padding:9px 9px 16px}
+  .room{padding:8px 9px 12px;gap:7px}
   .seat{--cardw:26px} .seat.s1{left:2%} .seat.s3{right:2%}
   .fan{min-height:40px} .fan .card{margin-left:-17px}
   .log{width:46%;left:10px;bottom:26px;font-size:9.5px}
-  .stage{min-height:330px;flex:0 1 auto;max-height:58vh}
+  .stage{min-height:296px;flex:0 1 auto;max-height:52vh}
   .middle{gap:16px;--cardw:66px}
   .hand{margin-top:-20px}
   .dial{width:72%}
   .arrow{width:26px;height:36px;margin-left:-13px}
   .coach p{font-size:16.5px;line-height:1.85}
-  .coach{padding:16px 12px 12px;gap:9px;min-height:92px;border-radius:14px;margin:6px 0 0}
+  .sheet{padding:20px 18px 22px}
+  .sheet h2{font-size:22px}
+  .sheet p,.sheet ul{font-size:15px}
+  .sheet .lead{font-size:16.5px}
+  .sheet .note{font-size:13px}
+  table{font-size:13px}
+  .btn{padding:10px 17px;font-size:14px}
+  .hint{font-size:12.5px}
+  .coach{padding:14px 12px 11px;gap:8px;min-height:88px;border-radius:14px;margin:5px 0 0}
   .coach .caret{font-size:17px}
   .coach .tapline{font-size:12px;letter-spacing:0}
   .coach .foot{margin-top:9px;padding-top:8px;gap:8px}
@@ -1718,7 +1727,7 @@ function showLesson(n){
   const L=lessonFor(n);
   open('<div class="kicker">TUTORIAL · '+n+' / 6</div><h2>'+L.t+'</h2>'+
     '<p class="lead">'+L.lead+'</p>'+
-    '<p style="font-size:12px;color:var(--ivory-3)">この先は画面の下に出る案内が、いま何を押せばいいか一手ずつ教えます。</p>'+
+    '<p class="note">この先は画面の下に出る案内が、いま何を押せばいいか一手ずつ教えます。</p>'+
     '<div class="rowbtns"><button class="btn pri" id="lgo">第'+n+'ラウンドを始める</button></div>',false);
   sheet.querySelector("#lgo").onclick=()=>{ close(); dealRound(); };
 }
@@ -1802,7 +1811,7 @@ function askExperience(){
     '<div class="rowbtns" style="margin-top:14px">'+
     '<button class="btn pri" data-mode="intro">はじめて（UNO も知らない）</button>'+
     '<button class="btn" data-mode="uno">UNO なら知っている</button></div>'+
-    '<p style="margin-top:16px;font-size:12px;color:var(--ivory-3);line-height:1.9">'+
+    '<p class="note" style="margin-top:18px">'+
     '<b>はじめて</b> … カードの並びかた、順番の回りかた、何をすれば勝ちなのかから一つずつ。用語もその都度かみくだきます。<br>'+
     '<b>知っている</b> … 「UNO と何が違うのか」を軸に進めます。同じ部分の説明は省きます。</p>',false);
   sheet.querySelectorAll("[data-mode]").forEach(b=>b.onclick=()=>{ close(); newGame(6,b.dataset.mode); });
