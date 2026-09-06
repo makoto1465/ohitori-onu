@@ -28,7 +28,7 @@ body{
 }
 button{font:inherit;color:inherit;cursor:pointer}
 button:focus-visible{outline:2px solid var(--brass-hot);outline-offset:3px}
-.room{max-width:1120px;margin:0 auto;padding:12px 14px calc(22px + var(--msgh,0px));
+.room{max-width:1120px;margin:0 auto;padding:12px 14px 22px;
   display:flex;flex-direction:column;gap:10px;min-height:100%}
 
 /* ── ヘッダー ── */
@@ -208,16 +208,15 @@ button.card.sel{transform:rotate(0deg) translateY(-32px) scale(1.05);z-index:8;
 [hidden]{display:none!important}
 /* ═══ コーチ（チュートリアル） ═══ */
 /* ── 画面いちばん下に置く、独立したメッセージウィンドウ ── */
-.coach{position:fixed;left:50%;transform:translateX(-50%);bottom:12px;z-index:80;
-  width:min(1092px,calc(100% - 22px));
-  display:flex;gap:14px;align-items:flex-end;
+.coach{position:relative;z-index:20;margin:8px 0 2px;
+  display:flex;flex-direction:column;align-items:stretch;gap:0;
   background:linear-gradient(180deg,#142C24,#091714);
   border:2px solid var(--brass);border-radius:16px;
   padding:18px 18px 15px;min-height:106px;
   box-shadow:0 -10px 44px -14px #000, 0 20px 50px -22px #000,
     inset 0 1px 0 rgba(245,218,154,.28), inset 0 0 0 1px rgba(0,0,0,.55);
   animation:msgIn .22s ease-out}
-@keyframes msgIn{from{opacity:0;transform:translateX(-50%) translateY(14px)}}
+@keyframes msgIn{from{opacity:0;transform:translateY(10px)}}
 /* 肩の見出し。「読むところ」か「操作するところ」かが一目で分かる */
 .coach::before{content:"せつめい";position:absolute;top:-12px;left:20px;
   background:var(--seal);color:#fff;font-size:11.5px;font-weight:700;letter-spacing:.14em;
@@ -227,17 +226,26 @@ button.card.sel{transform:rotate(0deg) translateY(-32px) scale(1.05);z-index:8;
 .coach .body{flex:1;min-width:0}
 .coach p{margin:0;font-size:17px;line-height:1.95;color:#FBFAF7;letter-spacing:.01em}
 .coach p em{font-style:normal;color:var(--brass-hot);font-weight:700}
-.coach .dots{display:flex;gap:5px;margin-top:11px}
+.coach .dots{display:flex;gap:5px;margin:0}
 .coach .dots i{width:6px;height:6px;border-radius:50%;background:rgba(217,180,95,.28)}
 .coach .dots i.on{background:var(--brass-hot)}
 /* 「次へ」— 送れることが一目で分かるように、光らせて置く */
-.coach .next{flex:none;align-self:flex-end;border:0;border-radius:999px;
-  padding:11px 22px;font-size:14.5px;font-weight:900;letter-spacing:.06em;
-  background:linear-gradient(180deg,var(--brass-hot),var(--brass));color:#20180A;
-  box-shadow:0 6px 18px -8px var(--brass);opacity:.3;pointer-events:none;transition:opacity .2s}
-.coach .next.on{opacity:1;pointer-events:auto;animation:nextBob 1.05s ease-in-out infinite}
-.coach .next:hover{filter:brightness(1.08)}
-@keyframes nextBob{0%,100%{transform:translateY(0)}50%{transform:translateY(3px)}}
+/* 下段：進め方の案内。説明文とは別立てで常に見えている */
+.coach .foot{display:flex;align-items:center;gap:12px;margin-top:11px;padding-top:10px;
+  border-top:1px solid rgba(217,180,95,.2)}
+.coach .tap{margin-left:auto;display:flex;align-items:center;gap:8px;
+  font-size:12.5px;font-weight:700;color:var(--brass-hot);letter-spacing:.02em;white-space:nowrap}
+.coach .tap b{font-size:15px;line-height:1;animation:tapBob 1.1s ease-in-out infinite}
+.coach .tap.hot{background:rgba(217,180,95,.16);border:1.5px solid var(--brass-hot);
+  padding:6px 14px;border-radius:999px;box-shadow:0 0 0 0 rgba(217,180,95,.5);
+  animation:tapPulse 1.4s ease-out infinite}
+@keyframes tapBob{0%,100%{transform:translateY(-2px)}50%{transform:translateY(2px)}}
+@keyframes tapPulse{0%{box-shadow:0 0 0 0 rgba(217,180,95,.45)}70%,100%{box-shadow:0 0 0 12px rgba(217,180,95,0)}}
+/* 「次がある」合図の ▼。ボタンではないので、枠のどこを押しても進む */
+.coach .caret{flex:none;pointer-events:none;font-size:19px;line-height:1;color:var(--brass-hot);
+  text-shadow:0 2px 8px rgba(217,180,95,.55);opacity:0;transition:opacity .2s}
+.coach .caret.on{opacity:1;animation:caretBob 1s ease-in-out infinite}
+@keyframes caretBob{0%,100%{transform:translateY(-2px)}50%{transform:translateY(3px)}}
 body.holding #ctl,body.holding .hand{pointer-events:none}
 body.holding #ctl{opacity:.4}
 body.tut .hand{margin-top:-4px}
@@ -331,9 +339,11 @@ td.win{color:var(--brass);font-weight:700}
   .dial{width:72%}
   .arrow{width:26px;height:36px;margin-left:-13px}
   .coach p{font-size:15.5px;line-height:1.9}
-  .coach{padding:16px 13px 13px;gap:10px;min-height:98px;bottom:8px;
-    width:calc(100% - 16px);border-radius:14px}
-  .coach .next{padding:9px 16px;font-size:13.5px}
+  .coach{padding:16px 12px 12px;gap:9px;min-height:92px;border-radius:14px;margin:6px 0 0}
+  .coach .caret{font-size:17px}
+  .coach .tap{font-size:11px;gap:6px}
+  .coach .tap.hot{padding:5px 10px}
+  .coach .foot{margin-top:9px;padding-top:8px;gap:8px}
   .coach::before{font-size:10.5px;padding:2px 11px;left:14px}
   .dchip{font-size:12px;padding:3px 8px}
 }
@@ -590,7 +600,7 @@ const SCENES={
            ["y8","r4","g7"],
            ["yD","g6","r7"]]},
  // 4) オヌ宣言 → あなたがオヌ上がり（−20点）
- 4:{field:"b2",start:0,draw:[],script:["r5","r9","r4"],
+ 4:{field:"b2",start:0,draw:[],script:["r5","r9","r4"],forget:1,
     hands:[["b5","r7"],
            ["r5","g8"],
            ["r9","g3"],
@@ -669,6 +679,7 @@ function dealRound(){
   G.discard=[];
   G.players=NAMES.map((n,i)=>({name:n,human:i===0,hand:[],onu:false,forgot:false,drew16:false}));
   const S=G.tutorial?SCENES[G.round]:null;
+  G.scene=S;
   G.script=null;
   let top;
   if(S){
@@ -880,7 +891,7 @@ function play(pi,cards,chosen){
   if(!p.hand.length){ finish(pi,cards.length>1?"kasane":"onu"); return; }
   if(p.hand.length===1&&!p.onu){
     if(p.human)p.forgot=true;
-    else if(G.tutorial||Math.random()<0.85){p.onu=true;say(`${p.name}「オヌ！」`,"sl");flashSeal();}
+    else if(G.tutorial?!(G.scene&&G.scene.forget===pi):Math.random()<0.85){p.onu=true;say(`${p.name}「オヌ！」`,"sl");flashSeal();}
     else p.forgot=true;
   }
   openReact();
@@ -939,7 +950,7 @@ function openReact(){
       if(Math.random()<0.45)doWarikomi(pi,ex[0]);
     },700+idx*280+Math.random()*400);
   });
-  if(G.players[0].forgot) later(()=>{
+  if(G.players[0].forgot&&!G.tutorial) later(()=>{
     if(G.phase!=="react"||!G.players[0].forgot)return;
     G.players[0].forgot=false;
     say(`${G.players[1+(Math.random()*3|0)].name}「オヌ言ってない！」→ あなたは4枚引いた。`,"sl");
@@ -972,7 +983,7 @@ function doWarikomi(pi,card){
   if(!p.hand.length){ finish(pi,out&&!isSym(card)?"warikomi":"kasane"); return; }
   if(p.hand.length===1&&!p.onu){
     if(p.human)p.forgot=true;
-    else if(G.tutorial||Math.random()<0.85){p.onu=true;say(`${p.name}「オヌ！」`,"sl");}
+    else if(G.tutorial?!(G.scene&&G.scene.forget===pi):Math.random()<0.85){p.onu=true;say(`${p.name}「オヌ！」`,"sl");}
     else p.forgot=true;
   }
   openReact();
@@ -1348,31 +1359,52 @@ const STEPS_UNO={
  ],
  4:[
   {stop:1,when:c=>c.myTurn&&c.me.hand.length===2,say:[
+   "このラウンドが ONU の心臓部です。",
    "UNO の「ウノ！」にあたるのが<em>「オヌ！」</em>。",
-   "残り1枚で宣言します。違いは2つ。",
+   "手札が<em>残り1枚</em>になったら宣言します。",
+   "なぜ宣言するのか。<em>「次で上がる」と全員に知らせる</em>ためです。",
+   "知らせるので、当然ねらわれます。ドロー2を押しつけられたり。",
+   "それでも宣言は義務。UNO との違いは2つ。",
    "1つめ。<em>宣言できる時間が決まっている</em>（カードが出た直後の数秒間）。",
-   "2つめ。<em>宣言した状態が、特殊な上がりの前提条件になる</em>。"]},
+   "2つめ。<em>宣言した状態が、特殊な上がりの前提条件になる</em>。",
+   "まず自分でやってみましょう。"]},
   {when:c=>c.myTurn&&c.me.hand.length===2&&c.sel()===0,point:c=>c.card("青5"),
    text:"矢印の<em>青5</em>を選んでください。出すと残り1枚です。"},
   {when:c=>c.myTurn&&c.me.hand.length===2&&c.sel()>0,point:c=>c.button("出す"),
    text:"<em>「出す」</em>を押します。"},
   {stop:1,when:c=>c.btn("オヌ！"),say:[
-   {t:"赤い<em>「オヌ！」</em>が現れました。",show:c=>{demoRing(c.button("オヌ！"),6);}},
-   {t:"同時に<em>金色のバー</em>が走り始めています。",show:c=>{demoRing(document.querySelector(".ip-track"),8);}},
-   "<em>バーが消えきる前に押す</em>のがルールです。",
-   "忘れると指摘されて<em>4枚</em>。気づかれなければ1枚で済みます。"]},
+   {t:"残り1枚になり、赤い<em>「オヌ！」</em>が出ました。",show:c=>{demoRing(c.button("オヌ！"),6);}},
+   {t:"同時に、卓の下の<em>金色のバー</em>が走り始めています。",show:c=>{demoRing(document.querySelector(".ip-track"),8);}},
+   "これが宣言の<em>受付時間</em>。バーが消えきる前に押すのがルールです。",
+   "いまは説明のため止めていますが、本番では数秒しかありません。",
+   "押し忘れると、他の人に指摘されて<em>4枚</em>引かされます。",
+   "誰にも気づかれずに自分の番が戻れば、1枚で済みます。"]},
   {when:c=>c.btn("オヌ！"),point:c=>c.button("オヌ！"),
    text:"矢印の<em>「オヌ！」</em>を押してください。"},
   {stop:1,when:c=>c.me.onu&&!c.myTurn,say:[
-   {t:"<em>オヌ状態</em>になりました。",show:c=>{demoRing(c.el("#myOnu"),5);}},
-   "次のラウンドの<em>割り込み上がり</em>は、この状態が条件です。"]},
+   {t:"宣言できました。あなたの側に「オヌ」の印が付きます。",show:c=>{demoRing(c.el("#myOnu"),5);}},
+   "この状態を<em>オヌ状態</em>といいます。",
+   "第5ラウンドで使う<em>割り込み上がり</em>は、この状態が条件です。"]},
+  {stop:1,when:c=>c.btn2("指摘"),say:[
+   {t:"見てください。コウも残り1枚になりました。",show:c=>{demoRing(c.el("#seat1"));}},
+   "でも「オヌ！」と言っていません。<em>言い忘れです</em>。",
+   {t:"こういうとき、<em>あなたが指摘できます</em>。",show:c=>{const b=c.button2("指摘");if(b)demoRing(b,6);}},
+   "指摘すれば、コウは罰として<em>4枚</em>引かされます。",
+   "つまりこの宣言は、<em>相手のを見張る</em>ルールでもあるのです。"]},
+  {when:c=>c.btn2("指摘"),point:c=>c.button2("指摘"),
+   text:"矢印の<em>「コウのオヌ忘れを指摘」</em>を押してください。"},
+  {stop:1,when:c=>c.g.players[1].hand.length>=5,say:[
+   {t:"コウが<em>4枚</em>引かされました。",show:c=>{demoFloat(c.el("#seat1"),"+4枚","no");}},
+   "残り1枚から一気に5枚。宣言忘れがどれだけ痛いか分かります。",
+   "だから自分のときは、絶対に押し忘れないこと。"]},
   {when:c=>c.myTurn&&c.me.hand.length===1&&c.legal.length&&c.sel()===0,point:c=>c.playable(),
-   text:"場は赤。手札の<em>赤7</em>が出せます。選んでください。"},
+   text:"では最後の1枚。場は赤なので<em>赤7</em>が出せます。選んでください。"},
   {when:c=>c.myTurn&&c.me.hand.length===1&&c.sel()>0,point:c=>c.button("出す"),
    text:"<em>「出す」</em>で上がりです。"},
   {stop:1,when:c=>c.g.phase==="over",say:[
-   {t:"宣言してから最後の1枚——<em>オヌ上がり</em>です。",show:c=>{demoFloat(c.el("#hand"),"−20点");}},
-   "<em>−20点</em>。一番よく使う上がり方です。"]}
+   "宣言してから最後の1枚を出す——これが<em>オヌ上がり</em>。",
+   {t:"<em>−20点</em>。一番よく使う上がり方です。",show:c=>{demoFloat(c.el("#hand"),"−20点");}},
+   "宣言を忘れると、この−20点を取り逃がすことになります。"]}
  ],
  5:[
   {stop:1,when:c=>c.myTurn&&c.me.hand.length===2,say:[
@@ -1545,34 +1577,55 @@ const STEPS_INTRO={
  ],
  4:[
   {stop:1,when:c=>c.myTurn&&c.me.hand.length===2,say:[
-   "ここからが、このゲームの名前の由来です。",
+   "このラウンドが、このゲームで一番大事なところです。",
    "手札が<em>残り1枚</em>になったら、",
-   "<em>「オヌ！」と宣言</em>しなければいけません。",
-   "忘れると、ほかの人に指摘されて<em>4枚</em>引かされます。"]},
+   "<em>「オヌ！」と声に出して宣言</em>しなければいけません。",
+   "ゲームの名前は、この宣言から来ています。",
+   "なぜ宣言するのか。",
+   "<em>「次で上がるぞ」と全員に知らせる</em>ためです。",
+   "知らせるので、当然ほかの3人からねらわれます。",
+   "それでも宣言は義務。忘れると罰があります。",
+   "まずは自分でやってみましょう。"]},
   {when:c=>c.myTurn&&c.me.hand.length===2&&c.sel()===0,point:c=>c.card("青5"),
    text:"手札は2枚。矢印の<em>青5</em>を選んでください。"},
   {when:c=>c.myTurn&&c.me.hand.length===2&&c.sel()>0,point:c=>c.button("出す"),
    text:"<em>「出す」</em>を押すと、残り1枚になります。"},
   {stop:1,when:c=>c.btn("オヌ！"),say:[
-   {t:"赤い<em>「オヌ！」</em>が現れました。",show:c=>{demoRing(c.button("オヌ！"),6);}},
+   {t:"赤い<em>「オヌ！」</em>のボタンが現れました。",show:c=>{demoRing(c.button("オヌ！"),6);}},
    {t:"そして卓の下に、<em>金色のバー</em>。",show:c=>{demoRing(document.querySelector(".ip-track"),8);}},
-   "これが<em>受付時間</em>です。",
+   "これが宣言の<em>受付時間</em>です。",
    "本当は、このバーが消えきる前に押さなければいけません。",
-   "いまは説明のため、止めてあります。"]},
+   "いまは説明のため、止めてあります。",
+   "押し忘れると、ほかの人に指摘されて<em>4枚</em>引かされます。"]},
   {when:c=>c.btn("オヌ！"),point:c=>c.button("オヌ！"),
    text:"矢印の<em>「オヌ！」</em>を押してください。"},
   {stop:1,when:c=>c.me.onu&&!c.myTurn,say:[
-   {t:"宣言できました。<em>オヌ状態</em>といいます。",show:c=>{demoRing(c.el("#myOnu"),5);}},
+   {t:"宣言できました。あなたの側に「オヌ」の印が付いています。",show:c=>{demoRing(c.el("#myOnu"),5);}},
+   "この状態を<em>オヌ状態</em>といいます。",
    "ここまで来て、初めて最後の1枚を出して上がれます。"]},
+  {stop:1,when:c=>c.btn2("指摘"),say:[
+   {t:"見てください。コウも残り1枚になりました。",show:c=>{demoRing(c.el("#seat1"));}},
+   "でも「オヌ！」と言っていません。<em>言い忘れです</em>。",
+   {t:"こういうとき、<em>あなたが指摘できます</em>。",show:c=>{const b=c.button2("指摘");if(b)demoRing(b,6);}},
+   "指摘すると、コウは罰として<em>4枚</em>引かされます。",
+   "つまりこの宣言は、<em>相手のを見張る</em>ルールでもあるのです。"]},
+  {when:c=>c.btn2("指摘"),point:c=>c.button2("指摘"),
+   text:"矢印の<em>「コウのオヌ忘れを指摘」</em>を押してください。"},
+  {stop:1,when:c=>c.g.players[1].hand.length>=5,say:[
+   {t:"コウが<em>4枚</em>引かされました。",show:c=>{demoFloat(c.el("#seat1"),"+4枚","no");}},
+   "残り1枚だったのが、一気に5枚。",
+   "宣言忘れがどれだけ痛いか分かります。",
+   "だから自分のときは、絶対に押し忘れないこと。"]},
   {when:c=>c.myTurn&&c.me.hand.length===1&&c.legal.length&&c.sel()===0,point:c=>c.playable(),
-   text:"場は赤。手札の<em>赤7</em>が出せます。選んでください。"},
+   text:"では最後の1枚。場は赤なので<em>赤7</em>が出せます。選んでください。"},
   {when:c=>c.myTurn&&c.me.hand.length===1&&c.sel()>0,point:c=>c.button("出す"),
    text:"<em>「出す」</em>で上がりです。"},
   {stop:1,when:c=>c.g.phase==="over",say:[
    "上がりました。",
    "宣言してから最後の1枚を出す——これが<em>オヌ上がり</em>。",
    {t:"<em>−20点</em>です。",show:c=>{demoFloat(c.el("#hand"),"−20点");}},
-   "点が少ないほど勝ちなので、大きな得になります。"]}
+   "点が少ないほど勝ちなので、大きな得になります。",
+   "宣言を忘れると、この−20点を取り逃がします。"]}
  ],
  5:[
   {stop:1,when:c=>c.myTurn&&c.me.hand.length===2,say:[
@@ -1627,14 +1680,9 @@ function typeStop(){ if(typer){clearTimeout(typer);typer=null;} typing=false; }
 function typeAll(){
   typeStop();
   if(sayNodes)sayNodes.forEach(o=>{o.n.nodeValue=o.t;});
-  const c=$("coach"), b=c&&c.querySelector(".next"); if(b)b.classList.add("on");
+  const c=$("coach"), b=c&&c.querySelector(".caret"); if(b)b.classList.add("on");
 }
-// 枠の高さぶんだけ卓を持ち上げる（枠が手札やボタンを隠さないように）
-function fitMsg(){
-  const c=$("coach");
-  const h=(!c||c.hidden)?0:c.offsetHeight+20;
-  document.documentElement.style.setProperty("--msgh",h+"px");
-}
+function fitMsg(){}
 function typeInto(el,html,done){
   typeStop();
   el.style.minHeight="";
@@ -1668,13 +1716,16 @@ function advanceSay(){
   const s=q[G.sayI];
   const c=$("coach");
   c.className="coach stop";
-  c.innerHTML='<div class="body"><p></p>'+
+  G.tapSeen=(G.tapSeen||0)+1;
+  c.innerHTML='<div class="body"><p></p></div>'+
+    '<div class="foot">'+
     (q.length>1?'<div class="dots">'+q.map((_,i)=>'<i class="'+(i<=G.sayI?"on":"")+'"></i>').join("")+'</div>':'')+
-    '</div><button class="next">▼ 次へ</button>';
+    '<span class="tap'+(G.tapSeen<=4?" hot":"")+'"><b>👆</b>この枠のどこを押しても次へ</span>'+
+    '<span class="caret">▼</span></div>';
   c.hidden=false;
   c.onclick=onSayClick;
   if(s.show){ try{ s.show(tutCtx()); }catch(e){} }
-  typeInto(c.querySelector("p"),s.t,()=>{ const b=c.querySelector(".next"); if(b)b.classList.add("on"); });
+  typeInto(c.querySelector("p"),s.t,()=>{ const b=c.querySelector(".caret"); if(b)b.classList.add("on"); });
   fitMsg();
 }
 function onSayClick(){ if(typing)typeAll(); else advanceSay(); }
@@ -1777,6 +1828,8 @@ function tutCtx(){
   return {g:G,me,myTurn,legal:myTurn?legalGroups(me):[],
     btn:t=>ctls().some(b=>b.textContent.indexOf(t)===0),
     button:t=>ctls().find(b=>b.textContent.indexOf(t)===0)||null,
+    btn2:t=>ctls().some(b=>b.textContent.indexOf(t)>=0),
+    button2:t=>ctls().find(b=>b.textContent.indexOf(t)>=0)||null,
     card:n=>document.querySelector('#hand .card[aria-label="'+n+'"]'),
     seat:i=>document.getElementById(i===0?"hand":"seat"+i),
     el:q=>document.querySelector(q),
