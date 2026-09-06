@@ -224,6 +224,9 @@ body.tut .hand{margin-top:-4px}
 .hand .card.aim{transform:rotate(0deg) translateY(-24px);z-index:7;
   box-shadow:0 0 0 3px var(--brass-hot),0 0 28px -2px var(--brass),var(--lift)}
 .btn.aim{box-shadow:0 0 0 3px var(--brass-hot),0 8px 20px -10px var(--brass)}
+#hand.aim,#discard.aim,#deckslot.aim,.seat.aim{
+  box-shadow:0 0 0 3px var(--brass-hot),0 0 34px -4px var(--brass);border-radius:14px}
+#deckslot.aim{border-radius:10px}
 .arrow{position:fixed;z-index:78;pointer-events:none;width:32px;height:44px;margin-left:-16px;
   animation:bob .8s ease-in-out infinite}
 .arrow.up{transform:rotate(180deg);animation-name:bobUp}
@@ -603,16 +606,17 @@ function resumeGame(){
 }
 const $=id=>document.getElementById(id);
 
-function newGame(maxRounds,tutorial){
+function newGame(maxRounds,tmode){
   G={maxRounds,round:0,totals:[0,0,0,0],history:[],dealer:0,lastWinner:null,players:null,
-     tutorial:!!tutorial,tips:new Set(),hold:false,held:[],ipEnd:0,ipLeft:0,active:null};
-  REACT_MS=tutorial?4600:3000;
+     tutorial:!!tmode,tmode:tmode||null,
+     tips:new Set(),hold:false,held:[],ipEnd:0,ipLeft:0,active:null};
+  REACT_MS=tmode?4600:3000;
   startRound();
 }
 function startRound(){
   clearTimers(); sel.clear(); hideCoach();
   G.round++;
-  if(G.tutorial&&LESSONS[G.round]){ showLesson(G.round); return; }
+  if(G.tutorial&&lessonFor(G.round)){ showLesson(G.round); return; }
   dealRound();
 }
 function dealRound(){
@@ -1155,107 +1159,263 @@ function flashSeal(text){
 }
 
 /* ═══════════ チュートリアル ═══════════ */
-const LESSONS={
- 1:{t:"出す、引く",lead:"カードの出し方と、出せないときの引き方。1ラウンド分を一手ずつ案内します。"},
- 2:{t:"重ねだしと文字カード",lead:"同じ数字をまとめて出す方法と、Skip・Reverse の効き方。"},
- 3:{t:"ワイルドとドロー返し",lead:"回ってきた Draw2 を押しつけ返し、アウトオブプレイを体験します。"},
- 4:{t:"オヌ宣言",lead:"残り1枚になったときの「オヌ！」。宣言してから上がるまで。"},
- 5:{t:"割り込み",lead:"順番を無視して出せる場面と、そのまま上がる方法。"},
- 6:{t:"オヌスペと集計",lead:"手札の合計と場の点数が一致したときの一発上がり。最後に6ラウンドの合計を見ます。"}
+/* ── モードごとの出し分け ── */
+const lessonFor=r=>((G&&G.tmode==="intro")?LESSONS_INTRO:LESSONS_UNO)[r]||null;
+const stepsFor =r=>((G&&G.tmode==="intro")?STEPS_INTRO :STEPS_UNO )[r]||null;
+
+/* ══ UNO を知っている人向け ══ */
+const BRIEF_UNO=
+'<h3>UNO と同じところ</h3><ul>'+
+'<li>場のカードと<b>色か数字が合えば出せる</b>。出せなければ山から1枚引く。</li>'+
+'<li>Skip・Reverse・Draw2・Wild・Wild Draw4 の効果もほぼ同じ。</li></ul>'+
+'<h3>ONU で決定的に違う3つ</h3><ul>'+
+'<li><b>点は少ないほうが勝ち。</b>上がった人は<b>マイナス点</b>をもらい、上がれなかった人は<b>手札に残った点がそのまま失点</b>。UNO と逆向きの点の付き方です。</li>'+
+'<li><b>自分の番を待たずに出せる場面がある。</b>カードが1枚出るたびに数秒の受付時間（インプレイ）があり、その間だけ割り込みや一発上がりを狙えます。</li>'+
+'<li><b>上がり方に「役」があり、役ごとに点が違う。</b>オヌ上がり −20 ／ オヌスペ −20 ／ 重ね上がり 0 ／ 割り込み上がり 0 ／ 返し・破りは −50 から倍々。</li></ul>'+
+'<p>この6ラウンドで、上の3つを一つずつ実際に体験します。</p>';
+const LESSONS_UNO={
+ 1:{t:"点の付き方が逆",lead:"出し方は UNO のまま。まずは ONU の目的そのものを掴みます。",brief:BRIEF_UNO},
+ 2:{t:"重ねだしと、上がり札の制限",lead:"同じ数字は何枚でも同時に出せます。ただし上がりに使える札には制限が。"},
+ 3:{t:"ドローの押しつけ返し",lead:"重ねて返すのが正式ルール。ワイルドが「重い」理由もここで。"},
+ 4:{t:"オヌ宣言",lead:"UNO の「ウノ！」にあたる宣言。受付時間と、宣言状態の意味。"},
+ 5:{t:"割り込み",lead:"色も数字も同じ札は、自分の番でなくても出せます。"},
+ 6:{t:"オヌスペと集計",lead:"点数計算そのものが必殺技になる ONU の目玉。最後に順位を見ます。"}
 };
-const STEPS={
+const STEPS_UNO={
  1:[
   {stop:1,when:c=>c.myTurn&&c.me.hand.length===3,
-   text:"場に出ているのが<em>赤4</em>。手札から出せるのは、場のカードと<em>同じ色・同じ数字・同じ文字</em>のどれかに当てはまる札だけです。いま明るいのは青4だけ——色は違いますが<em>数字が同じ4</em>だから出せます。暗い札は出せない印です。"},
+   text:"出し方は UNO と同じです。場のカードと<em>色か数字が合えば出せる</em>。ここは説明不要でしょう。<em>違うのは点の付き方</em>——ONU は<em>合計点が一番低い人が勝ち</em>で、上がった人はマイナス点をもらいます。まず1ラウンド、その付き方を見てください。"},
   {when:c=>c.myTurn&&c.me.hand.length===3,
    point:c=>c.sel()?c.button("出す"):c.card("青4"),
-   text:"矢印の<em>青4</em>をクリックして選び、続けて<em>「出す」</em>を押してください。"},
+   text:"場は<em>赤4</em>。数字が同じ<em>青4</em>が出せます（明るい札が出せる札）。矢印の札を選んで「出す」。"},
   {stop:1,when:c=>c.g.phase==="react"&&c.g.lastPlay&&c.g.lastPlay.by===0,
-   text:"出せました。場が青4に変わったので、<em>次からは「青」か「4」に合わせる</em>ことになります。下で走っている細いバーは<em>インプレイ</em>——割り込みや宣言を受け付ける時間です（あとのラウンドで使います）。"},
+   text:"ここまでは UNO どおり。ただし卓の下の<em>金色のバー</em>に注目してください。<em>カードが1枚出るたびに走る受付時間</em>で、ONU ではこの間だけ<em>順番を無視した手</em>が打てます（ラウンド4以降で使います）。"},
   {when:c=>c.myTurn&&!c.g.canPass&&!c.legal.length,
    point:c=>c.button("山から1枚引く"),
-   text:"あなたの番ですが、手札はどれも場のカードと合いません（全部暗い）。<em>出せないときは山から1枚引く</em>のがルールです。矢印のボタンを押してください。"},
+   text:"出せる札がありません。山から1枚引きます。矢印のボタンを押してください。"},
   {when:c=>c.myTurn&&c.g.canPass&&c.legal.length,
    point:c=>c.sel()?c.button("出す"):c.playable(),
-   text:"引いた札が場に合いました。<em>引いた札はその場で出せます</em>（出せなければ「なし」で次の人へ）。矢印の札を選んで「出す」。"},
+   text:"<em>引いた札はその場で出せます</em>。矢印の札を選んで「出す」。（出せなければ「なし」で次の人へ）"},
   {when:c=>c.myTurn&&c.me.hand.length>0,
-   text:"ここからは同じ要領です。<em>出せる札を出す、無ければ引く</em>。誰かが上がったらラウンド終了です。"},
+   text:"ここからは同じ要領です。誰かが上がるまで続けてください。"},
   {stop:1,when:c=>c.g.phase==="over",
-   text:"誰かが最後の1枚を出した時点で<em>ラウンド終了</em>です。卓を見てください——<em>上がれなかった人は、手札に残った札の点数がそのまま自分の点になります</em>。数字はその数字、Skip・Reverse・Draw2 は10点、Wild は20点。<em>点は少ないほど良い</em>ので、重い札を抱えたまま終わるのが一番損です。"}
+   text:"ラウンド終了。ここが ONU の根本です——<em>上がった人は −20点、残りの3人は手札に残った点がそのまま失点</em>。数字は数字ぶん、記号カードは10点、ワイルドは20点。<em>合計が低い人が勝ち</em>なので、UNO と違って<em>上がった人がマイナスを稼ぐ</em>ゲームだと分かります。次に出る得点表を見てください。"}
  ],
  2:[
+  {stop:1,when:c=>c.myTurn&&c.me.hand.length===3,
+   text:"UNO に無い出し方が1つ。<em>同じ数字なら何枚でも同時に出せます</em>（重ねだし）。そして制限も1つ——<em>上がりの札に記号カード（Skip・Reverse・Draw2・Wild）は使えません</em>。最後に残す札は必ず数字、ということです。"},
   {when:c=>c.myTurn&&c.me.hand.length===3,
    point:c=>c.sel()?c.button("出す"):c.card("緑スキップ"),
-   text:"場は<em>緑2</em>。出せるのは<em>緑スキップ</em>だけです（色が同じ）。Skip・Reverse・Draw2 を<em>文字カード</em>と呼び、Skip は<em>次の人を飛ばす</em>札。矢印の札を出して、順番がどう動くか見てください。"},
+   text:"場は緑2、出せるのは<em>緑スキップ</em>だけ。上がりに使えない札なので早めに処理するのが正解です。矢印の札を出してください。"},
   {stop:1,when:c=>c.g.phase==="turn"&&c.g.turn===2,
-   text:"順番がコウを飛び越して<em>ミナ</em>に移りました。Skip は<em>2×（出した枚数）人先</em>へ進みます。1枚なら2人先、つまり次の1人を飛ばした形です。"},
+   text:"Skip の効果は UNO と同じで次の人を飛ばす。ONU では<em>2枚同時に出せば2人ぶん飛ばせます</em>（2×枚数 人先へ）。"},
   {stop:1,when:c=>c.g.dir===-1,
-   text:"今度はミナが<em>Reverse</em>を出しました。<em>回る向きが逆</em>になります（2枚同時など偶数枚なら元のまま）。卓の矢印の向きも変わり、順番がすぐこちらへ戻ってきます。"},
+   text:"ミナが Reverse を出して向きが逆になりました。ONU の細かい違いとして、<em>偶数枚まとめて出すと向きは元のまま</em>です。"},
   {when:c=>c.myTurn&&c.me.hand.length===2,
    point:c=>c.sel()===0?c.card("赤7"):c.sel()===1?c.card("青7"):c.button("出す"),
-   text:"赤7と青7は色こそ違え<em>どちらも数字が7</em>。ONUでは<em>同じ数字なら何枚でも同時に出せます</em>（重ねだし）。<em>上がりの札に文字カードは使えない</em>ので、緑スキップを先に処理したのが正解でした。矢印の順に2枚とも選んで「出す」。"},
+   text:"赤7と青7、<em>どちらも数字が7</em>なので2枚同時に出せます。これで手札ゼロ。矢印の順に選んで「出す」。"},
   {stop:1,when:c=>c.g.phase==="over",
-   text:"同じ数字を重ねて上がる形が<em>重ね上がり</em>。役がないので<em>0点</em>ですが、他の3人には手札の点数が乗るので十分に得な終わり方です。"}
+   text:"同じ数字を重ねて上がるのが<em>重ね上がり</em>で<em>0点</em>。マイナスは付きませんが、他の3人には手札の点が乗るので十分に得な終わり方です。"}
  ],
  3:[
+  {stop:1,when:c=>c.myTurn&&c.g.pending,
+   text:"Draw2 が回ってきました。UNO ではローカルルール扱いの<em>重ねて返す</em>が、ONU では<em>正式ルール</em>です。重ねるたび枚数が積み上がり、<em>最後に返せなかった人が（重なった枚数×2）枚</em>まとめて引きます。"},
   {when:c=>c.myTurn&&c.g.pending,
    point:c=>c.sel()?c.button("出す"):c.card("黄ドロー2"),
-   text:"レンが<em>Draw2</em>を出しました。このままだとあなたが2枚引かされます。でも<em>同じ札を重ねれば、引く役目を次の人に押しつけられます</em>。最後に返せなかった人が（重なった枚数×2）枚を引くことに。矢印の黄ドロー2を出しましょう。"},
+   text:"矢印の黄ドロー2を重ねて、コウに押しつけましょう。"},
   {stop:1,when:c=>c.g.phase==="out",
-   text:"コウは返せる札を持っていなかったので、2枚×2＝<em>4枚</em>引いています。誰かが引いている間は<em>アウトオブプレイ</em>——その間は誰もカードを出せず、卓が止まります。"},
+   text:"コウが4枚引いています。この間を<em>アウトオブプレイ</em>と呼び、<em>誰もカードを出せません</em>（割り込みもオヌスペも受け付けない）。ONU 特有の用語なので覚えておいてください。"},
+  {stop:1,when:c=>c.myTurn&&c.legal.some(gr=>gr[0].color==="w"), point:c=>c.card("ワイルド"),
+   text:"ワイルドの効果は UNO と同じ。ただし<em>1枚20点</em>——点が低いほど勝つこのゲームでは、抱えたまま終わると致命傷です。出せるうちに出すのが定石。"},
   {when:c=>c.myTurn&&c.legal.some(gr=>gr[0].color==="w"),
    point:c=>c.sel()?c.button("出す"):c.card("ワイルド"),
-   text:"<em>ワイルド</em>は場の色に関係なく出せて、次の色を自分で指定できる万能札。ただし<em>1枚20点</em>と重く、最後まで持っていると点にそのまま乗ります。矢印の札を出して、色を選んでください。"},
+   text:"矢印のワイルドを出して、次の色を選んでください。"},
   {when:c=>c.myTurn&&c.me.hand.length>0,
-   text:"ここからは同じ要領です。<em>出せる札を出す、無ければ引く</em>。誰かが上がったらラウンド終了です。"},
+   text:"ここからは同じ要領で。誰かが上がるまで続けてください。"},
   {stop:1,when:c=>c.g.phase==="over",
-   text:"引かされた枚数が、そのまま点差になります。<em>残った札の点数は全部自分の点</em>。重い札ほど早めに手放すのが得だと分かります。"}
+   text:"引かされた枚数がそのまま点差になります。<em>数字＝その数字、記号カード＝10点、ワイルド＝20点</em>。この表はいつでも右上の「ルール」から見られます。"}
  ],
  4:[
+  {stop:1,when:c=>c.myTurn&&c.me.hand.length===2,
+   text:"UNO の「ウノ！」にあたるのが<em>「オヌ！」</em>。残り1枚で宣言します。違いは2つ——<em>受付が「インプレイ」の間に限られる</em>ことと、<em>宣言した状態（オヌ状態）が特殊な上がりの前提条件になる</em>ことです。"},
   {when:c=>c.myTurn&&c.me.hand.length===2,
    point:c=>c.sel()?c.button("出す"):c.card("青5"),
-   text:"手札は2枚。<em>1枚出すと残り1枚</em>になります。ONUでは残り1枚になったとき<em>「オヌ！」と宣言</em>しなければいけません。まず矢印の青5を出して、その直後に何が出るか見てください。"},
-  {stop:1,when:c=>c.btn("オヌ！"),
-   text:"残り1枚になり、赤い<em>「オヌ！」</em>が出ました。いま説明のため止めていますが、本来は<em>下のバーが走りきる前に押す</em>のが宣言です。押し忘れると他の人に指摘されて<em>4枚</em>引かされます。"},
-  {when:c=>c.btn("オヌ！"),
-   point:c=>c.button("オヌ！"),
-   text:"バーが切れる前に<em>「オヌ！」</em>を押してください。"},
+   text:"手札は2枚。矢印の青5を出すと残り1枚になります。出してください。"},
+  {stop:1,when:c=>c.btn("オヌ！"), point:c=>c.button("オヌ！"),
+   text:"「オヌ！」が現れ、金色のバーが走り始めました。<em>バーが消えきる前に押す</em>のがルール（いまは説明のため止めています）。忘れると指摘されて<em>4枚</em>、誰にも気づかれなければ1枚で済みます。"},
+  {when:c=>c.btn("オヌ！"), point:c=>c.button("オヌ！"),
+   text:"矢印の<em>「オヌ！」</em>を押してください。"},
   {stop:1,when:c=>c.me.onu&&!c.myTurn,
-   text:"宣言できました。この状態を<em>オヌ状態</em>といいます。あとは最後の1枚を出せば上がりです。"},
+   text:"<em>オヌ状態</em>になりました。次のラウンドで使う<em>割り込み上がり</em>は、この状態であることが条件です。"},
   {when:c=>c.myTurn&&c.me.hand.length===1&&c.legal.length,
    point:c=>c.sel()?c.button("出す"):c.playable(),
-   text:"場は赤。手札の<em>赤7</em>が出せます。矢印の札を出してください。"},
+   text:"場は赤。手札の赤7が出せます。矢印の札を出してください。"},
   {stop:1,when:c=>c.g.phase==="over",
-   text:"宣言してから最後の1枚を出す形が<em>オヌ上がり</em>。<em>−20点</em>です。点は少ないほど良いので、マイナスを取れるこの上がり方が一番よく使われます。"}
+   text:"宣言してから最後の1枚を出す<em>オヌ上がり</em>で<em>−20点</em>。一番よく使う上がり方です。"}
  ],
  5:[
+  {stop:1,when:c=>c.myTurn&&c.me.hand.length===2,
+   text:"ONU の目玉その1、<em>割り込み</em>。<em>場のカードと色も数字も同じ</em>札は、<em>自分の番でなくても出せます</em>。受付はさっきの金色のバーが走っている間だけ。"},
   {when:c=>c.myTurn&&c.me.hand.length===2,
    point:c=>c.sel()?c.button("出す"):c.card("青5"),
-   text:"さっきと同じ形から。ONUには<em>自分の番を待たずに出せる</em>場面があります。場のカードと<em>色も数字も同じ</em>札を持っているときです。まずは矢印の青5を出してください。"},
-  {when:c=>c.btn("オヌ！"),
-   point:c=>c.button("オヌ！"),
+   text:"さっきと同じ形から。まず矢印の青5を出してください。"},
+  {when:c=>c.btn("オヌ！"), point:c=>c.button("オヌ！"),
    text:"残り1枚。<em>「オヌ！」</em>を押して、オヌ状態にしておきましょう。"},
   {stop:1,when:c=>c.btn("割り込み上がり"),
-   text:"場を見てください。ミナが出したのは<em>赤7</em>。あなたの手札も<em>赤7</em>——<em>色も数字も同じ</em>です。この形なら順番を無視して出せます。オヌ状態で割り込んで上がるのが<em>割り込み上がり</em>（0点）。次の順番は割り込んだ人の次の人からになります。"},
-  {when:c=>c.btn("割り込み上がり"),
-   point:c=>c.button("割り込み上がり"),
+   text:"ミナが出したのは<em>赤7</em>。あなたの手札も<em>赤7</em>——<em>色も数字も一致</em>しました。オヌ状態なので、このまま順番を飛ばして上がれます。"},
+  {when:c=>c.btn("割り込み上がり"), point:c=>c.button("割り込み上がり"),
    text:"矢印の<em>「割り込み上がり！」</em>を押してください。"},
   {when:c=>c.myTurn&&c.me.hand.length>0,
-   text:"ここからは同じ要領です。<em>出せる札を出す、無ければ引く</em>。誰かが上がったらラウンド終了です。"},
+   text:"ここからは同じ要領で。誰かが上がるまで続けてください。"}
  ],
  6:[
   {stop:1,when:c=>c.g.phase==="turn"&&c.g.turn===1,
-   text:"最後は<em>オヌスペ</em>。手札（2枚以上）の合計点が、<em>場に出たカードの点数とぴったり同じ</em>なら、順番に関係なく手札を全部出して上がれます。あなたの手札は赤4と黄5で<em>合計9点</em>。これからコウが出す札の<em>点数</em>に注目してください。"},
+   text:"ONU の目玉その2、<em>オヌスペ</em>。<em>手札（2枚以上）の合計点</em>が<em>場に出たカードの点数</em>とぴったり一致したら、順番に関係なく<em>手札を全部出して上がれます</em>。点数計算がそのまま必殺技になっているのが ONU の一番の特徴です。"},
+  {stop:1,when:c=>c.g.phase==="turn"&&c.g.turn===1,
+   text:"あなたの手札は<em>赤4と黄5＝合計9点</em>。これから場に出る札の<em>点数</em>を見ていてください。"},
   {stop:1,when:c=>c.btn("オヌスペ"),
-   text:"場に出たのは<em>青9＝9点</em>。あなたの手札の合計と同じです。狙えるのは<em>インプレイの間だけ</em>、そして<em>自分が出したカードにオヌスペはできません</em>。"},
-  {when:c=>c.btn("オヌスペ"),
-   point:c=>c.button("オヌスペ"),
+   text:"コウが出したのは<em>青9＝9点</em>。手札の合計と一致しました。（自分が出した札には使えません。狙えるのはインプレイの間だけ）"},
+  {when:c=>c.btn("オヌスペ"), point:c=>c.button("オヌスペ"),
    text:"矢印の<em>「オヌスペ！」</em>を押してください。"},
   {when:c=>c.myTurn&&c.me.hand.length>0,
-   text:"ここからは同じ要領です。<em>出せる札を出す、無ければ引く</em>。誰かが上がったらラウンド終了です。"},
-
+   text:"ここからは同じ要領で。誰かが上がるまで続けてください。"},
   {stop:1,when:c=>c.g.phase==="over",
-   text:"オヌスペは<em>−20点</em>。他人のオヌスペには<em>返し・破り</em>もあり、返した人が−50点、返された人が+50点、連続すると倍々になります（詳しくは右上の「ルール」）。これで上がり方は一通り。最後に6ラウンドの合計を見ましょう——<em>合計点が一番低い人が勝ち</em>です。"}
+   text:"オヌスペは<em>−20点</em>。さらに他人のオヌスペには<em>返し・破り</em>があり、返した人 −50点／返された人 +50点、連続すると倍々になります（詳細は右上の「ルール」）。ここが大逆転の仕掛けです。最後に合計を見ましょう——<em>一番低い人が勝ち</em>。"}
+ ]
+};
+
+/* ══ UNO も知らない人向け：用語を出す前に必ず説明する ══ */
+const BRIEF_INTRO=
+'<h3>どんなゲーム？</h3><ul>'+
+'<li>4人で順番に、手持ちのカードを1枚ずつ出していきます。</li>'+
+'<li>出せるのは、場に出ているカードと<b>色が同じ</b>か<b>数字が同じ</b>札だけ。出せなければ山から1枚引きます。</li>'+
+'<li>手札を先に出しきった人が、そのラウンドの「上がり」。</li>'+
+'<li><b>点数は少ないほうが勝ちです。</b>上がった人はマイナス点をもらい、上がれなかった人は<b>手札に残ったカードの点数</b>が失点になります。</li></ul>'+
+'<p>これを6ラウンド繰り返して、合計点が一番低い人が勝者です。細かいことは実際に遊びながら一つずつ説明します。まずは画面の見かたから。</p>';
+const LESSONS_INTRO={
+ 1:{t:"何をするゲーム？　画面の見かた",lead:"どこに何があるのか、何をすれば勝ちなのかから始めます。",brief:BRIEF_INTRO},
+ 2:{t:"順番を動かすカード",lead:"次の人を飛ばす札、回る向きを変える札。そして同じ数字をまとめて出すルール。"},
+ 3:{t:"引かせる札と、色を変える札",lead:"押しつけ返せるドロー2と、万能のワイルド。カードの点数もここで覚えます。"},
+ 4:{t:"残り1枚の合図「オヌ！」",lead:"このゲームの名前の由来。宣言を忘れると罰があります。"},
+ 5:{t:"順番を無視できる「割り込み」",lead:"ある条件のときだけ、自分の番を待たずに出せます。"},
+ 6:{t:"一発上がりの「オヌスペ」と勝敗",lead:"手札の合計と場の点数が一致したら全部出せます。最後に順位を見ます。"}
+};
+const STEPS_INTRO={
+ 1:[
+  {stop:1,when:c=>c.myTurn&&c.me.hand.length===3, point:c=>c.el("#hand"),
+   text:"まず画面の見かたから。いちばん下に並んでいるのが<em>あなたの持ちカード</em>です。この先「<em>手札（てふだ）</em>」と呼びます。いまは3枚。これを出しきるのが目標です。"},
+  {stop:1,when:c=>c.myTurn&&c.me.hand.length===3, point:c=>c.el("#discard"),
+   text:"真ん中の右にあるのが<em>場（ば）</em>。みんなが出したカードを重ねる場所で、<em>いちばん上の1枚が「今の場のカード」</em>です。いまは<em>赤の4</em>ですね。"},
+  {stop:1,when:c=>c.myTurn&&c.me.hand.length===3, point:c=>c.el("#deckslot"),
+   text:"その左、裏向きの束が<em>山（やま）</em>。まだ誰にも配られていないカードです。<em>出せる札が無いときは、ここから1枚引きます</em>。"},
+  {stop:1,when:c=>c.myTurn&&c.me.hand.length===3, point:c=>c.el("#seat1"),
+   text:"上に並ぶ3人が対戦相手のCPUです。名前の横の「2枚」は<em>その人が持っているカードの枚数</em>。順番は<em>あなた → コウ → ミナ → レン</em>と回ります。"},
+  {stop:1,when:c=>c.myTurn&&c.me.hand.length===3,
+   text:"カードを出せる条件は1つだけ。場のカードと<em>色が同じ</em>か、<em>数字が同じ</em>なら出せます。どちらも違う札は出せません。"},
+  {stop:1,when:c=>c.myTurn&&c.me.hand.length===3,
+   text:"手札を見てください。場は<em>赤の4</em>。<em>青の4</em>は色こそ違いますが<em>数字が同じ4</em>なので出せます。黄の2と緑の9は色も数字も合わないので出せません。<em>出せる札は明るく、出せない札は暗く</em>表示しています。"},
+  {when:c=>c.myTurn&&c.me.hand.length===3,
+   point:c=>c.sel()?c.button("出す"):c.card("青4"),
+   text:"では矢印の<em>青4</em>をクリックして選び、続けて<em>「出す」</em>を押してください。"},
+  {stop:1,when:c=>c.g.phase==="react"&&c.g.lastPlay&&c.g.lastPlay.by===0,
+   text:"出せました。場のカードが青4に変わったので、<em>次の人は「青」か「4」に合わせる</em>ことになります。……卓の下で走っている細い金色のバーは、あとのラウンドで使う仕掛けです。いまは気にしなくて大丈夫。"},
+  {when:c=>c.myTurn&&!c.g.canPass&&!c.legal.length,
+   point:c=>c.button("山から1枚引く"),
+   text:"あなたの番が回ってきました。でも手札はどれも場のカードと合いません（全部暗いですね）。こういうときは<em>山から1枚引きます</em>。矢印のボタンを押してください。"},
+  {when:c=>c.myTurn&&c.g.canPass&&c.legal.length,
+   point:c=>c.sel()?c.button("出す"):c.playable(),
+   text:"引いた札が場に合いました。<em>引いた札はその場で出せます</em>。矢印の札を選んで「出す」。（合わなければ「なし」で次の人に回します）"},
+  {when:c=>c.myTurn&&c.me.hand.length>0,
+   text:"ここからは同じ要領です。<em>出せる札を出す、無ければ引く</em>。誰かが手札を出しきるまで続きます。"},
+  {stop:1,when:c=>c.g.phase==="over",
+   text:"誰かが手札を<em>全部出しきった</em>時点でラウンド終了です。ここが肝心——<em>点数は少ないほうが良い</em>。上がった人は<em>−20点</em>、上がれなかった人は<em>手札に残ったカードの点数がそのまま失点</em>になります。だから重い札を抱えたまま終わるのが一番損なのです。"}
+ ],
+ 2:[
+  {stop:1,when:c=>c.myTurn&&c.me.hand.length===3,
+   text:"カードには 0〜9 の<em>数字の札</em>のほかに、<em>記号の札</em>があります（ルールブックでは「文字カード」と呼びます）。今回はそのうち2種類を見ます。"},
+  {stop:1,when:c=>c.myTurn&&c.me.hand.length===3, point:c=>c.card("緑スキップ"),
+   text:"これが<em>スキップ（⊘）</em>。出すと<em>次の人の番が飛ばされます</em>。いま場は<em>緑の2</em>で、この札は<em>緑</em>——色が同じなので出せます。"},
+  {when:c=>c.myTurn&&c.me.hand.length===3,
+   point:c=>c.sel()?c.button("出す"):c.card("緑スキップ"),
+   text:"矢印の緑スキップを出して、順番がどう動くか見てください。"},
+  {stop:1,when:c=>c.g.phase==="turn"&&c.g.turn===2,
+   text:"順番が<em>コウを飛び越してミナ</em>に移りました。これがスキップです。（2枚同時に出せば2人ぶん飛ばせます）"},
+  {stop:1,when:c=>c.g.dir===-1,
+   text:"今度はミナが<em>リバース（⇄）</em>を出しました。<em>回る向きが逆</em>になる札です。卓のまわりの矢印も向きが変わり、順番がすぐこちらへ戻ってきます。"},
+  {stop:1,when:c=>c.myTurn&&c.me.hand.length===2,
+   text:"ここでこのゲームならではのルール。<em>同じ数字のカードは、何枚でも一度に出せます</em>。手札の赤7と青7は色こそ違いますが<em>どちらも7</em>。2枚まとめて出せば手札がゼロ＝上がりです。"},
+  {when:c=>c.myTurn&&c.me.hand.length===2,
+   point:c=>c.sel()===0?c.card("赤7"):c.sel()===1?c.card("青7"):c.button("出す"),
+   text:"矢印の順に<em>赤7 → 青7 → 「出す」</em>とクリックしてください。"},
+  {stop:1,when:c=>c.g.phase==="over",
+   text:"手札を出しきりました。同じ数字を重ねて上がる形を<em>重ね上がり</em>といいます。もう一つ大事なルール——<em>最後に出す札に記号の札は使えません</em>。だから緑スキップを先に処理しておいたのが正解でした。"}
+ ],
+ 3:[
+  {stop:1,when:c=>c.myTurn&&c.g.pending,
+   text:"記号の札をあと2種類。まず<em>ドロー2（+2）</em>です。レンがこれを出しました。出されると<em>次の人が2枚引かされます</em>。次はあなたの番——のはずですが。"},
+  {stop:1,when:c=>c.myTurn&&c.g.pending, point:c=>c.card("黄ドロー2"),
+   text:"あなたも<em>同じドロー2</em>を持っています。<em>同じ札を重ねれば、引く役目をそのまま次の人に押しつけられます</em>。押しつけるほど枚数は増え、最後に返せなかった人がまとめて引きます。"},
+  {when:c=>c.myTurn&&c.g.pending,
+   point:c=>c.sel()?c.button("出す"):c.card("黄ドロー2"),
+   text:"矢印の黄ドロー2を出して、コウに押しつけましょう。"},
+  {stop:1,when:c=>c.g.phase==="out",
+   text:"コウは返せる札を持っていなかったので、2枚が2つぶんで<em>4枚</em>引いています。<em>誰かが引いている間は、他の人もカードを出せません</em>（アウトオブプレイといいます）。"},
+  {stop:1,when:c=>c.myTurn&&c.legal.some(gr=>gr[0].color==="w"), point:c=>c.card("ワイルド"),
+   text:"手札の黒い札が<em>ワイルド</em>。<em>場の色に関係なくいつでも出せて、次の色を自分で決められる</em>万能札です。"},
+  {when:c=>c.myTurn&&c.legal.some(gr=>gr[0].color==="w"),
+   point:c=>c.sel()?c.button("出す"):c.card("ワイルド"),
+   text:"矢印のワイルドを出して、次の色を選んでください。"},
+  {when:c=>c.myTurn&&c.me.hand.length>0,
+   text:"ここからは同じ要領で進めてください。<em>出せる札を出す、無ければ引く</em>。"},
+  {stop:1,when:c=>c.g.phase==="over",
+   text:"ここでカードの<em>点数</em>を覚えましょう。<em>数字の札はその数字がそのまま点数</em>（赤7なら7点）、<em>記号の札は10点</em>、<em>ワイルドは20点</em>です。点は少ないほど良いので、引かされて手札が増えるほど不利。重いワイルドは早めに出すのが得だと分かります。"}
+ ],
+ 4:[
+  {stop:1,when:c=>c.myTurn&&c.me.hand.length===2,
+   text:"ここからが、このゲームの名前の由来になっているルール。手札が<em>残り1枚</em>になったら、<em>「オヌ！」と宣言</em>しなければいけません。忘れると他の人に指摘されて<em>4枚</em>引かされます。"},
+  {when:c=>c.myTurn&&c.me.hand.length===2,
+   point:c=>c.sel()?c.button("出す"):c.card("青5"),
+   text:"手札は2枚。矢印の<em>青5</em>を出すと残り1枚になります。出して、その直後に何が現れるか見てください。"},
+  {stop:1,when:c=>c.btn("オヌ！"), point:c=>c.button("オヌ！"),
+   text:"赤い<em>「オヌ！」</em>ボタンが現れました。そして卓の下の<em>金色のバー</em>——これが<em>受付時間</em>です。本来は<em>このバーが消えきる前に押す</em>のがルール（いまは説明のため止めています）。"},
+  {when:c=>c.btn("オヌ！"), point:c=>c.button("オヌ！"),
+   text:"矢印の<em>「オヌ！」</em>を押してください。"},
+  {stop:1,when:c=>c.me.onu&&!c.myTurn,
+   text:"宣言できました。あなたの側に「オヌ」の印が付いています。この状態を<em>オヌ状態</em>といい、<em>ここまで来て初めて最後の1枚を出して上がれます</em>。"},
+  {when:c=>c.myTurn&&c.me.hand.length===1&&c.legal.length,
+   point:c=>c.sel()?c.button("出す"):c.playable(),
+   text:"場は赤。手札の<em>赤7</em>は色が同じなので出せます。矢印の札を出してください。"},
+  {stop:1,when:c=>c.g.phase==="over",
+   text:"宣言してから最後の1枚を出して上がる——これが<em>オヌ上がり</em>で、<em>−20点</em>がもらえます。点は少ないほど良いので、<em>マイナスは大きな得</em>。このゲームで一番よく使う上がり方です。"}
+ ],
+ 5:[
+  {stop:1,when:c=>c.myTurn&&c.me.hand.length===2,
+   text:"このゲームには、ある条件のときだけ<em>自分の番を待たずにカードを出せる</em>ルールがあります。条件は、場のカードと<em>色も数字も同じ</em>札を持っていること。これを<em>割り込み</em>といいます。"},
+  {when:c=>c.myTurn&&c.me.hand.length===2,
+   point:c=>c.sel()?c.button("出す"):c.card("青5"),
+   text:"さっきと同じ形から。まずは矢印の<em>青5</em>を出してください。"},
+  {when:c=>c.btn("オヌ！"), point:c=>c.button("オヌ！"),
+   text:"残り1枚になりました。<em>「オヌ！」</em>を押して宣言しておきましょう。"},
+  {stop:1,when:c=>c.btn("割り込み上がり"),
+   text:"場を見てください。ミナが出したのは<em>赤の7</em>。あなたの手札も<em>赤の7</em>——<em>色も数字も同じ</em>です。条件がそろったので、いまは自分の番でなくても出せます。"},
+  {when:c=>c.btn("割り込み上がり"), point:c=>c.button("割り込み上がり"),
+   text:"矢印の<em>「割り込み上がり！」</em>を押してください。"},
+  {when:c=>c.myTurn&&c.me.hand.length>0,
+   text:"ここからは同じ要領で。<em>出せる札を出す、無ければ引く</em>。"}
+ ],
+ 6:[
+  {stop:1,when:c=>c.g.phase==="turn"&&c.g.turn===1,
+   text:"最後はこのゲームで一番派手なルール、<em>オヌスペ</em>。まず点数のおさらいです。<em>数字の札はその数字が点数、記号の札は10点、ワイルドは20点</em>。"},
+  {stop:1,when:c=>c.g.phase==="turn"&&c.g.turn===1,
+   text:"あなたの手札は<em>赤の4と黄の5</em>。合計すると<em>9点</em>です。この「合計」を覚えたまま、これから<em>場に出るカードの点数</em>に注目してください。"},
+  {stop:1,when:c=>c.btn("オヌスペ"),
+   text:"コウが出したのは<em>青の9</em>＝<em>9点</em>。あなたの手札の合計と<em>ぴったり同じ</em>になりました。この条件がそろうと、<em>順番に関係なく手札を全部出して上がれます</em>。これがオヌスペです。"},
+  {when:c=>c.btn("オヌスペ"), point:c=>c.button("オヌスペ"),
+   text:"矢印の<em>「オヌスペ！」</em>を押してください。"},
+  {when:c=>c.myTurn&&c.me.hand.length>0,
+   text:"ここからは同じ要領で。<em>出せる札を出す、無ければ引く</em>。"},
+  {stop:1,when:c=>c.g.phase==="over",
+   text:"オヌスペも<em>−20点</em>。これで上がり方は一通りです。最後に<em>6ラウンドの合計</em>を見ましょう——<em>合計点が一番低い人が勝ち</em>。マイナスを稼げる上がり方を狙うのが勝ち筋です。"}
  ]
 };
 // 相手の番など、こちらが操作しない場面：卓を止めて読ませ、「次へ」で再開する
@@ -1310,7 +1470,7 @@ function trackArrow(){
   if(!arrowTarget||!arrowTarget.isConnected){ hideArrow(); return; }
   const r=arrowTarget.getBoundingClientRect();
   if(!r.width&&!r.height){ hideArrow(); return; }
-  const fromBelow=arrowTarget.classList.contains("btn")||r.top<58;
+  const fromBelow=arrowTarget.classList.contains("btn")||arrowTarget.classList.contains("seat")||r.top<90;
   a.classList.toggle("up",fromBelow);
   a.style.left=(r.left+r.width/2)+"px";
   a.style.top=(fromBelow? r.bottom+6 : r.top-(innerWidth<760?37:46))+"px";
@@ -1325,13 +1485,14 @@ function tutCtx(){
     btn:t=>ctls().some(b=>b.textContent.indexOf(t)===0),
     button:t=>ctls().find(b=>b.textContent.indexOf(t)===0)||null,
     card:n=>document.querySelector('#hand .card[aria-label="'+n+'"]:not([disabled])'),
+    el:q=>document.querySelector(q),
     playable:()=>document.querySelector('#hand .card:not([disabled])'),
     sel:()=>sel.size};
 }
 const tutTrue=(fn,c)=>{ try{ return !!fn(c); }catch(e){ return false; } };
 function tutStep(){
   if(!G||!G.tutorial)return;
-  const list=STEPS[G.round]; if(!list)return;
+  const list=stepsFor(G.round); if(!list)return;
   const c=tutCtx();
   if(G.active!=null){
     const st=list[G.active];
@@ -1342,16 +1503,17 @@ function tutStep(){
     if(G.tips.has(G.round+":"+i))continue;
     if(!tutTrue(list[i].when,c))continue;
     for(let j=0;j<=i;j++)G.tips.add(G.round+":"+j);
-    if(list[i].stop){ G.active=null; hideArrow(); coachStop(list[i].text); }
+    if(list[i].stop){ G.active=null; coachStop(list[i].text);
+      if(list[i].point)aimArrow(list[i],c); else hideArrow(); }
     else { G.active=i; coachDo(list[i].text); aimArrow(list[i],c); }
     return;
   }
 }
 function showLesson(n){
-  const L=LESSONS[n];
+  const L=lessonFor(n);
   open('<div class="kicker">TUTORIAL · '+n+' / 6</div><h2>'+L.t+'</h2>'+
-    '<p class="lead">'+L.lead+'</p>'+
-    '<p>この先は画面の下の案内が、いま何を押せばいいか一手ずつ教えます。</p>'+
+    '<p class="lead">'+L.lead+'</p>'+(L.brief||'')+
+    '<p style="font-size:12px;color:var(--ivory-3)">この先は画面の下に出る案内が、いま何を押せばいいか一手ずつ教えます。</p>'+
     '<div class="rowbtns"><button class="btn pri" id="lgo">第'+n+'ラウンドを始める</button></div>',false);
   sheet.querySelector("#lgo").onclick=()=>{ close(); dealRound(); };
 }
@@ -1412,7 +1574,7 @@ function showStart(){
   open(`<div class="kicker">SOLO EDITION</div><h2>おひとりONU</h2>
     <p class="lead">ONU のルールブックをそのまま一人用に。あなた＋CPU3人の4人卓、少ない点数を取った人が勝ちです。</p>
     <h3>はじめての方へ</h3>
-    <p>短い6ラウンドを実際に遊びながら、1ラウンドにつき1つずつ覚えるモードです。配り札とCPUの動きは決まっていて、その回に覚えることが必ず起きます。最後は得点の集計まで。</p>
+    <p>短い6ラウンドを実際に遊びながら、1ラウンドにつき1つずつ覚えるモードです。配り札とCPUの動きは決まっていて、その回に覚えることが必ず起きます。<b>UNO を知らない方にも、カードの見かたと順番から説明します。</b></p>
     <div class="rowbtns" style="margin-top:8px">
       <button class="btn pri" data-tut="1">チュートリアルを始める</button></div>
     <h3>ふつうに遊ぶ</h3><p>通常は9回。短く決着をつけたいときは7回か5回。</p>
@@ -1425,11 +1587,29 @@ function showStart(){
     <li>残り1枚になったら、バーが切れる前に<b>オヌ！</b>を押す。忘れると誰かに指摘されて4枚。</li>
     <li>上がりの札に文字カード（Skip・Reverse・Draw2・Wild・Wild Draw4）は使えません。</li>
     <li>Wild Draw4 ×4枚 または Draw2 ×8枚 で16枚引いた人がそのラウンドに上がると<b>16枚返し</b>。</li></ul>`,false);
-  sheet.querySelectorAll("[data-n]").forEach(b=>b.onclick=()=>{close();newGame(+b.dataset.n,false);});
-  sheet.querySelectorAll("[data-tut]").forEach(b=>b.onclick=()=>{close();newGame(6,true);});
+  sheet.querySelectorAll("[data-n]").forEach(b=>b.onclick=()=>{close();newGame(+b.dataset.n,null);});
+  sheet.querySelectorAll("[data-tut]").forEach(b=>b.onclick=()=>{askExperience();});
+}
+function askExperience(){
+  open('<div class="kicker">TUTORIAL</div><h2>はじめる前に、ひとつだけ</h2>'+
+    '<p class="lead">ONU は「UNO」によく似たカードゲームです。あなたに合わせて説明の細かさを変えます。</p>'+
+    '<p>UNO で遊んだことはありますか？</p>'+
+    '<div class="rowbtns" style="margin-top:14px">'+
+    '<button class="btn pri" data-mode="intro">はじめて（UNO も知らない）</button>'+
+    '<button class="btn" data-mode="uno">UNO なら知っている</button></div>'+
+    '<p style="margin-top:16px;font-size:12px;color:var(--ivory-3);line-height:1.9">'+
+    '<b>はじめて</b> … カードの並びかた、順番の回りかた、何をすれば勝ちなのかから一つずつ。用語もその都度かみくだきます。<br>'+
+    '<b>知っている</b> … 「UNO と何が違うのか」を軸に進めます。同じ部分の説明は省きます。</p>',false);
+  sheet.querySelectorAll("[data-mode]").forEach(b=>b.onclick=()=>{ close(); newGame(6,b.dataset.mode); });
 }
 function showRules(){
   open(`<div class="kicker">RULE BOOK</div><h2>ONU の要点</h2>
+  <h3>UNO との違いだけ先に</h3>
+  <ul><li><b>点が少ないほうが勝ち。</b>上がった人はマイナス点、上がれなかった人は手札に残った点が失点。</li>
+  <li><b>同じ数字は何枚でも同時に出せる</b>（重ねだし）。ただし<b>上がりの札に記号カードは使えない</b>。</li>
+  <li><b>自分の番でなくても出せる場面がある。</b>カードが出るたびの受付時間（インプレイ）に、割り込み・オヌスペを狙える。</li>
+  <li><b>Draw2 / Wild Draw4 の重ね返しが正式ルール。</b>返せなかった人がまとめて引く。</li>
+  <li><b>上がり方に役があり、役で点が決まる。</b>下の表のとおり。</li></ul>
   <h3>カードの点数</h3>
   <ul><li>数字カード … その数字（0〜9）</li><li>Skip / Reverse / Draw2 … 各10点</li>
   <li>Wild / Wild Draw4 … 各20点</li></ul>
