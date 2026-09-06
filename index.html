@@ -28,7 +28,8 @@ body{
 }
 button{font:inherit;color:inherit;cursor:pointer}
 button:focus-visible{outline:2px solid var(--brass-hot);outline-offset:3px}
-.room{max-width:1120px;margin:0 auto;padding:12px 14px 22px;display:flex;flex-direction:column;gap:10px;min-height:100%}
+.room{max-width:1120px;margin:0 auto;padding:12px 14px calc(22px + var(--msgh,0px));
+  display:flex;flex-direction:column;gap:10px;min-height:100%}
 
 /* ── ヘッダー ── */
 .bar{display:flex;align-items:flex-end;gap:14px;flex-wrap:wrap}
@@ -206,28 +207,37 @@ button.card.sel{transform:rotate(0deg) translateY(-32px) scale(1.05);z-index:8;
 
 [hidden]{display:none!important}
 /* ═══ コーチ（チュートリアル） ═══ */
-.coach{display:flex;gap:12px;align-items:flex-start;
-  background:linear-gradient(180deg,#1C3A31,#122620);border:1px solid rgba(217,180,95,.45);
-  border-radius:14px;padding:12px 14px 12px 12px;box-shadow:0 18px 44px -24px #000;animation:rise .3s}
-.coach .num{flex:none;width:26px;height:26px;border-radius:50%;display:grid;place-items:center;
-  background:var(--brass);color:#20180A;font-family:"Dela Gothic One",sans-serif;font-size:12px;margin-top:1px}
-.coach p{margin:0;font-size:16px;line-height:2;color:var(--ivory);flex:1;letter-spacing:.01em}
-.coach{padding:15px 16px 15px 13px;gap:13px;align-items:center}
+/* ── 画面いちばん下に置く、独立したメッセージウィンドウ ── */
+.coach{position:fixed;left:50%;transform:translateX(-50%);bottom:12px;z-index:80;
+  width:min(1092px,calc(100% - 22px));
+  display:flex;gap:14px;align-items:flex-end;
+  background:linear-gradient(180deg,#142C24,#091714);
+  border:2px solid var(--brass);border-radius:16px;
+  padding:18px 18px 15px;min-height:106px;
+  box-shadow:0 -10px 44px -14px #000, 0 20px 50px -22px #000,
+    inset 0 1px 0 rgba(245,218,154,.28), inset 0 0 0 1px rgba(0,0,0,.55);
+  animation:msgIn .22s ease-out}
+@keyframes msgIn{from{opacity:0;transform:translateX(-50%) translateY(14px)}}
+/* 肩の見出し。「読むところ」か「操作するところ」かが一目で分かる */
+.coach::before{content:"せつめい";position:absolute;top:-12px;left:20px;
+  background:var(--seal);color:#fff;font-size:11.5px;font-weight:700;letter-spacing:.14em;
+  padding:3px 14px;border-radius:999px;box-shadow:0 4px 12px -4px #000;white-space:nowrap}
+.coach.do::before{content:"あなたの番";background:linear-gradient(180deg,var(--brass-hot),var(--brass));color:#20180A}
+.coach.stop{cursor:pointer}
 .coach .body{flex:1;min-width:0}
-.coach .caret{display:inline-block;color:var(--brass-hot);font-size:12px;margin-left:6px;
-  opacity:0;transform:translateY(0)}
-.coach .caret.on{animation:caret .9s ease-in-out infinite}
-@keyframes caret{0%,100%{opacity:.25;transform:translateY(0)}50%{opacity:1;transform:translateY(3px)}}
-.coach .dots{display:flex;gap:5px;margin-top:9px}
+.coach p{margin:0;font-size:17px;line-height:1.95;color:#FBFAF7;letter-spacing:.01em}
+.coach p em{font-style:normal;color:var(--brass-hot);font-weight:700}
+.coach .dots{display:flex;gap:5px;margin-top:11px}
 .coach .dots i{width:6px;height:6px;border-radius:50%;background:rgba(217,180,95,.28)}
 .coach .dots i.on{background:var(--brass-hot)}
-.coach .num{width:30px;height:30px;font-size:13px;align-self:flex-start;margin-top:2px}
-.coach p em{font-style:normal;color:var(--brass-hot);font-weight:700}
-.coach .x{flex:none;border:1px solid rgba(217,180,95,.35);background:none;border-radius:999px;
-  padding:2px 11px;font-size:11px;color:var(--ivory-2);align-self:center;transition:.16s}
-.coach .x:hover{border-color:var(--brass-hot);color:var(--brass-hot)}
-.coach .x.go{background:linear-gradient(180deg,var(--brass-hot),var(--brass));border-color:var(--brass-hot);
-  color:#20180A;font-weight:900;padding:5px 18px}
+/* 「次へ」— 送れることが一目で分かるように、光らせて置く */
+.coach .next{flex:none;align-self:flex-end;border:0;border-radius:999px;
+  padding:11px 22px;font-size:14.5px;font-weight:900;letter-spacing:.06em;
+  background:linear-gradient(180deg,var(--brass-hot),var(--brass));color:#20180A;
+  box-shadow:0 6px 18px -8px var(--brass);opacity:.3;pointer-events:none;transition:opacity .2s}
+.coach .next.on{opacity:1;pointer-events:auto;animation:nextBob 1.05s ease-in-out infinite}
+.coach .next:hover{filter:brightness(1.08)}
+@keyframes nextBob{0%,100%{transform:translateY(0)}50%{transform:translateY(3px)}}
 body.holding #ctl,body.holding .hand{pointer-events:none}
 body.holding #ctl{opacity:.4}
 body.tut .hand{margin-top:-4px}
@@ -265,10 +275,6 @@ body.tut .hand{margin-top:-4px}
 @keyframes bob{0%,100%{margin-top:-7px}50%{margin-top:3px}}
 @keyframes bobUp{0%,100%{margin-top:7px}50%{margin-top:-3px}}
 
-.coach{position:relative;overflow:hidden}
-.coach.stop{border-color:var(--brass);cursor:pointer;
-  box-shadow:0 0 0 1px rgba(217,180,95,.35),0 18px 44px -24px #000}
-.coach.stop .num{background:var(--seal);color:#fff}
 body.holding #ctl,body.holding .hand{pointer-events:none}
 body.holding #ctl{opacity:.45}
 .lessonlist li{margin-bottom:7px}
@@ -324,8 +330,11 @@ td.win{color:var(--brass);font-weight:700}
   .hand{margin-top:-20px}
   .dial{width:72%}
   .arrow{width:26px;height:36px;margin-left:-13px}
-  .coach p{font-size:15px;line-height:1.95}
-  .coach{padding:13px 13px 13px 11px;gap:10px}
+  .coach p{font-size:15.5px;line-height:1.9}
+  .coach{padding:16px 13px 13px;gap:10px;min-height:98px;bottom:8px;
+    width:calc(100% - 16px);border-radius:14px}
+  .coach .next{padding:9px 16px;font-size:13.5px}
+  .coach::before{font-size:10.5px;padding:2px 11px;left:14px}
   .dchip{font-size:12px;padding:3px 8px}
 }
 </style>
@@ -338,6 +347,7 @@ td.win{color:var(--brass);font-weight:700}
     </div>
     <div class="spacer"></div>
     <div class="chip">ラウンド <b id="cRound">–</b>/<b id="cRoundMax">–</b></div>
+    <button class="tbtn" id="bHome" title="最初の画面へ">🏠 最初へ</button>
     <button class="tbtn" id="bSound" aria-pressed="true" title="効果音">🔊 音</button>
     <button class="tbtn" id="bScore">得点表</button>
     <button class="tbtn" id="bRules">ルール</button>
@@ -1589,11 +1599,19 @@ function typeStop(){ if(typer){clearTimeout(typer);typer=null;} typing=false; }
 function typeAll(){
   typeStop();
   if(sayNodes)sayNodes.forEach(o=>{o.n.nodeValue=o.t;});
-  const c=$("coach"), k=c&&c.querySelector(".caret"); if(k)k.classList.add("on");
+  const c=$("coach"), b=c&&c.querySelector(".next"); if(b)b.classList.add("on");
+}
+// 枠の高さぶんだけ卓を持ち上げる（枠が手札やボタンを隠さないように）
+function fitMsg(){
+  const c=$("coach");
+  const h=(!c||c.hidden)?0:c.offsetHeight+20;
+  document.documentElement.style.setProperty("--msgh",h+"px");
 }
 function typeInto(el,html,done){
   typeStop();
+  el.style.minHeight="";
   el.innerHTML=html;
+  el.style.minHeight=el.offsetHeight+"px";
   const nodes=[];
   (function walk(n){ for(const ch of n.childNodes){ if(ch.nodeType===3)nodes.push({n:ch,t:ch.nodeValue}); else walk(ch); } })(el);
   nodes.forEach(o=>{o.n.nodeValue="";});
@@ -1622,29 +1640,31 @@ function advanceSay(){
   const s=q[G.sayI];
   const c=$("coach");
   c.className="coach stop";
-  c.innerHTML='<span class="num">!</span><div class="body"><p></p>'+
+  c.innerHTML='<div class="body"><p></p>'+
     (q.length>1?'<div class="dots">'+q.map((_,i)=>'<i class="'+(i<=G.sayI?"on":"")+'"></i>').join("")+'</div>':'')+
-    '</div><span class="caret">▼</span>';
+    '</div><button class="next">▼ 次へ</button>';
   c.hidden=false;
   c.onclick=onSayClick;
   if(s.show){ try{ s.show(tutCtx()); }catch(e){} }
-  typeInto(c.querySelector("p"),s.t,()=>{ const k=c.querySelector(".caret"); if(k)k.classList.add("on"); });
+  typeInto(c.querySelector("p"),s.t,()=>{ const b=c.querySelector(".next"); if(b)b.classList.add("on"); });
+  fitMsg();
 }
 function onSayClick(){ if(typing)typeAll(); else advanceSay(); }
 /* 操作の案内：ボタンなし。言われたとおりに操作すれば次へ進む */
 function coachDo(html){
   const c=$("coach");
   typeStop(); demoClear();
-  c.className="coach";
-  c.innerHTML='<span class="num">→</span><div class="body"><p></p></div>';
+  c.className="coach do";
+  c.innerHTML='<div class="body"><p></p></div>';
   c.onclick=null;
   c.hidden=false;
   typeInto(c.querySelector("p"),html);
+  fitMsg();
 }
 function hideCoach(){
   const c=$("coach");
   if(c){ c.hidden=true; c.innerHTML=""; c.onclick=null; }
-  typeStop(); demoClear(); hideArrow();
+  typeStop(); demoClear(); hideArrow(); fitMsg();
 }
 /* ── 卓の上に描く補助表示 ── */
 function demoClear(){ const d=$("demo"); if(d){ d.innerHTML="<svg></svg>"; d.hidden=true; } }
@@ -1715,7 +1735,7 @@ function trackArrow(){
   if(!arrowTarget||!arrowTarget.isConnected){ hideArrow(); return; }
   const r=arrowTarget.getBoundingClientRect();
   if(!r.width&&!r.height){ hideArrow(); return; }
-  const fromBelow=arrowTarget.classList.contains("btn")||arrowTarget.classList.contains("seat")||r.top<90;
+  const fromBelow=arrowTarget.classList.contains("seat")||r.top<90;
   a.classList.toggle("up",fromBelow);
   a.style.left=(r.left+r.width/2)+"px";
   a.style.top=(fromBelow? r.bottom+6 : r.top-(innerWidth<760?37:46))+"px";
@@ -1888,6 +1908,35 @@ function showRules(){
   paint();
   b.onclick=()=>{ if(SFX.toggle())SFX.btn(); paint(); };
 })();
+function clearTable(){
+  ["seat1","seat2","seat3"].forEach(id=>{ const e=$(id); if(e)e.innerHTML=""; });
+  const h=$("hand"); h.innerHTML=""; h.dataset.key="";
+  $("discard").innerHTML=""; $("deckslot").innerHTML=backEl();
+  $("log").innerHTML=""; $("ctl").innerHTML=""; $("hint").innerHTML="";
+  $("colorLab").textContent="場";
+  $("cRound").textContent="–"; $("cRoundMax").textContent="–"; $("cDeck").textContent="–";
+  $("myMeta").innerHTML=""; $("myTotal").textContent=""; $("myOnu").hidden=true;
+}
+function goHome(){
+  clearTimers();
+  if(G&&G.hold)releaseHold();
+  hideCoach(); demoClear(); hideArrow();
+  document.body.classList.remove("holding","tut");
+  if(G)setIP("idle");
+  G=null; sel.clear();
+  clearTable();
+  showStart();
+}
+$("bHome").onclick=()=>{
+  if(!G||!G.players){ goHome(); return; }
+  open('<div class="kicker">HOME</div><h2>最初の画面に戻りますか？</h2>'+
+    '<p class="lead">進行中のゲームは終了し、ここまでの得点も消えます。</p>'+
+    '<div class="rowbtns"><button class="btn pri" id="hYes">最初へ戻る</button>'+
+    '<button class="btn" id="hNo">ゲームを続ける</button></div>');
+  sheet.querySelector("#hYes").onclick=()=>{ close(); goHome(); };
+  sheet.querySelector("#hNo").onclick=close;
+};
+addEventListener("resize",fitMsg);
 $("bRules").onclick=showRules;
 $("bScore").onclick=()=>{
   open(`<div class="kicker">SCORE SHEET</div><h2>得点表</h2>
