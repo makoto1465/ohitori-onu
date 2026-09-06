@@ -146,9 +146,9 @@ body.tut .log{display:none}
 .hand .card.in{animation:dealIn .42s cubic-bezier(.2,.9,.3,1) backwards}
 .hand .card{will-change:transform}
 @keyframes dealIn{from{opacity:0;transform:translateY(70px) rotate(0deg) scale(.8)}}
-button.card:hover:not(:disabled){transform:rotate(0deg) translateY(-26px) scale(1.04);z-index:9}
+button.card:hover:not(:disabled){transform:rotate(0deg) translateY(-18px) scale(1.04);z-index:9}
 button.card:disabled{cursor:default;filter:brightness(.42) saturate(.3) contrast(.92)}
-button.card.sel{transform:rotate(0deg) translateY(-32px) scale(1.05);z-index:8;
+button.card.sel{transform:rotate(0deg) translateY(-20px) scale(1.05);z-index:8;
   box-shadow:0 0 0 3px var(--brass-hot),0 0 30px -4px var(--brass),var(--lift)}
 
 /* ═══ カード ═══ */
@@ -210,7 +210,7 @@ button.card.sel{transform:rotate(0deg) translateY(-32px) scale(1.05);z-index:8;
 [hidden]{display:none!important}
 /* ═══ コーチ（チュートリアル） ═══ */
 /* ── 画面いちばん下に置く、独立したメッセージウィンドウ ── */
-.coach{position:relative;z-index:20;margin:8px 0 2px;
+.coach{position:relative;z-index:30;margin:8px 0 2px;
   display:flex;flex-direction:column;align-items:stretch;gap:0;
   background:linear-gradient(180deg,#142C24,#091714);
   border:2px solid var(--brass);border-radius:16px;
@@ -245,8 +245,8 @@ button.card.sel{transform:rotate(0deg) translateY(-32px) scale(1.05);z-index:8;
 @keyframes caretBob{0%,100%{transform:translateY(-2px)}50%{transform:translateY(3px)}}
 body.holding #ctl,body.holding .hand{pointer-events:none}
 body.holding #ctl{opacity:.4}
-body.tut .hand{margin-top:-4px}
-.hand .card.aim{transform:rotate(0deg) translateY(-24px);z-index:7;
+body.tut .hand{margin-top:8px}
+.hand .card.aim{transform:rotate(0deg) translateY(-16px);z-index:7;
   box-shadow:0 0 0 3px var(--brass-hot),0 0 28px -2px var(--brass),var(--lift)}
 .btn.aim{box-shadow:0 0 0 3px var(--brass-hot),0 8px 20px -10px var(--brass)}
 #hand.aim,#discard.aim,#deckslot.aim,.seat.aim{
@@ -374,7 +374,9 @@ td.win{color:var(--brass);font-weight:700}
   .rail{flex:none;padding:0 10px 8px;border-radius:16px}
   .hand{margin-top:-14px;min-height:calc(var(--cardw)*1.5 + 10px);padding-top:4px}
   .hand .card{margin-left:-22px}
-  body.tut .hand{margin-top:-8px}
+  body.tut .hand{margin-top:10px}
+  .hand .card.aim{transform:rotate(0deg) translateY(-11px)}
+  button.card.sel{transform:rotate(0deg) translateY(-13px) scale(1.04)}
   .railhead{padding:2px 0 0;gap:8px}
   .me{font-size:13px} .meta{font-size:10px}
   .hint{font-size:12px;min-height:16px;margin-top:2px}
@@ -1653,12 +1655,19 @@ function advanceSay(){
     '<span class="caret"></span></div>';
   c.hidden=false;
   c.onclick=onSayClick;
-  if(s.show){ try{ s.show(tutCtx()); }catch(e){} }
   c.querySelector(".caret").textContent="▼";
+  // 先に本文の高さを確定させてから図を描く（描いたあとに枠が伸びると位置がずれるため）
   typeInto(c.querySelector("p"),s.t,()=>{ const b=c.querySelector(".caret"); if(b)b.classList.add("on"); });
   fitMsg();
+  G.sayShow=s.show||null;
+  redrawDemo();
 }
 function onSayClick(){ if(typing)typeAll(); else advanceSay(); }
+// 図はいまの配置で描き直す（枠の高さが変わったり画面が変わったとき用）
+function redrawDemo(){
+  demoClear();
+  if(G&&G.sayShow){ try{ G.sayShow(tutCtx()); }catch(e){} }
+}
 /* 操作の案内：ボタンなし。言われたとおりに操作すれば次へ進む */
 function coachDo(html){
   const c=$("coach");
@@ -1673,6 +1682,7 @@ function coachDo(html){
 function hideCoach(){
   const c=$("coach");
   if(c){ c.hidden=true; c.innerHTML=""; c.onclick=null; }
+  if(G)G.sayShow=null;
   typeStop(); demoClear(); hideArrow();
 }
 /* ── 卓の上に描く補助表示 ── */
@@ -1955,6 +1965,6 @@ $("bScore").onclick=()=>{
   <div class="rowbtns"><button class="btn" id="sc">閉じる</button></div>`);
   sheet.querySelector("#sc").onclick=close;
 };
-addEventListener("resize",()=>{ if(G&&G.players&&G.phase!=="deal")render(); });
+addEventListener("resize",()=>{ if(G&&G.players&&G.phase!=="deal")render(); redrawDemo(); });
 showStart();
 </script>
