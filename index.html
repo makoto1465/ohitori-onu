@@ -302,7 +302,8 @@ body.holding #ctl{opacity:.45}
 .veil[hidden]{display:none}
 .sheet{background:linear-gradient(180deg,var(--panel-2),var(--panel));
   border:1px solid rgba(217,180,95,.28);border-radius:14px;max-width:680px;width:100%;max-height:88vh;
-  overflow-y:auto;padding:26px 28px 28px;box-shadow:0 40px 90px -30px #000;animation:rise .3s}
+  overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;
+  padding:26px 28px 28px;box-shadow:0 40px 90px -30px #000;animation:rise .3s}
 @keyframes rise{from{opacity:0;transform:translateY(14px)}}
 .sheet h2{font-family:"Dela Gothic One",sans-serif;font-weight:400;font-size:27px;margin:0 0 10px;text-wrap:balance;line-height:1.4}
 .sheet h3{font-size:13.5px;letter-spacing:.14em;color:var(--brass);margin:22px 0 9px;font-weight:700}
@@ -313,6 +314,10 @@ body.holding #ctl{opacity:.45}
 .kicker{font-family:"Roboto Mono",monospace;font-size:11.5px;letter-spacing:.22em;color:var(--ivory-3);margin-bottom:10px}
 .sheet .note{font-size:14px;line-height:1.9;color:var(--ivory-3)}
 .rowbtns{display:flex;gap:9px;flex-wrap:wrap;margin-top:20px}
+/* 得点表が長くても操作ボタンが必ず見えるように、シートの底に貼り付ける */
+.sheet > .rowbtns:last-child{position:sticky;bottom:0;z-index:2;
+  margin:20px -28px -28px;padding:16px 28px 20px;border-radius:0 0 13px 13px;
+  background:linear-gradient(180deg,rgba(16,33,28,0),var(--panel) 34%)}
 table{border-collapse:collapse;width:100%;font-family:"Roboto Mono",monospace;font-size:14px;
   font-variant-numeric:tabular-nums}
 th,td{border-bottom:1px solid rgba(217,180,95,.16);padding:8px 7px;text-align:right}
@@ -342,9 +347,8 @@ td.win{color:var(--brass);font-weight:700}
   .btn{padding:9px 18px;font-size:14px}
 }
 @media (max-width:760px){
-  /* スマホは1画面に収める。ページ自体はスクロールさせない */
+  /* スマホでも1画面に収まるように詰める（収まらないときはスクロールで届く） */
   :root{--cardw:52px}
-  body{overflow:hidden}
   .room{height:100%;min-height:0;padding:6px 8px 8px;gap:6px}
   .bar{gap:7px;padding:0}
   .tagline{display:none}
@@ -388,6 +392,7 @@ td.win{color:var(--brass);font-weight:700}
   .arrow{width:24px;height:34px;margin-left:-12px}
   .dchip{font-size:11px;padding:3px 7px}
   .sheet{padding:18px 16px 20px}
+  .sheet > .rowbtns:last-child{margin:16px -16px -20px;padding:12px 16px 16px}
   .sheet h2{font-size:21px}
   .sheet p,.sheet ul{font-size:14.5px}
   .sheet .lead{font-size:16px}
@@ -1181,6 +1186,7 @@ function finish(winner,type){
   if(winner===0)SFX.win(); else SFX.over();
   later(()=>{G.hideTop=false;render();},420);
   flashSeal(winner===0?"あがり":"終了");
+  G.lastResult={winner,type,scores:scores.slice(),sixteen}; G.resultSeen=false;
   later(()=>showRoundSheet(winner,type,scores,sixteen),1250);
 }
 
@@ -1308,6 +1314,17 @@ function paintControls(){
         say(`あなた「オヌ言ってない！」→ ${p.name} は4枚引いた。`,"hi");drawCards(i,4);render();
       }));
     msg=b.length?"いまなら宣言・わりこみができます。":"受付中…";
+  }else if(G.phase==="over"&&G.resultSeen){
+    // 「卓を見る」で結果シートを閉じても、ここから必ず次へ進める
+    const last=G.round>=G.maxRounds;
+    b.push(btn(last?"最終結果へ":"次のラウンドへ","pri",false,()=>{
+      if(G.phase!=="over")return;      // 二重クリックで1ラウンド飛ばさない
+      if(last)showFinal(); else startRound();
+    }));
+    if(G.lastResult)b.push(btn("結果をもう一度見る","",false,()=>{
+      const r=G.lastResult; showRoundSheet(r.winner,r.type,r.scores,r.sixteen);
+    }));
+    msg="このラウンドは終了。卓を見終わったら次へ進んでください。";
   }else if(G.phase==="out")msg="カードを引いています — この間は誰も出せません。";
   else if(G.phase==="deal")msg="配っています…";
   else if(G.phase==="turn")msg=`${G.players[G.turn].name} の番。`;
@@ -1846,6 +1863,7 @@ function scoreTable(){
   <tfoot><tr><td>合計</td>${G.totals.map(t=>`<td class="${t<0?"neg":""}">${t>0?"+":""}${t}</td>`).join("")}</tr></tfoot></table>`;
 }
 function showRoundSheet(winner,type,scores,sixteen){
+  G.resultSeen=true; render();         // 卓に戻ったあと、下から進めるようにする
   const last=G.round>=G.maxRounds;
   const detail=type==="chain"
     ? `<p>${G.chain.map((pi,i)=>`${i===0?"オヌスペ":i===G.chain.length-1?"最後に上がり":"返し／破り"}：${NAMES[pi]}`).join(" → ")}</p>`:"";
