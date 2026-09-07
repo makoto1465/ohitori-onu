@@ -1,3 +1,5 @@
+<!doctype html>
+<html lang="ja">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0A1E1A">
@@ -423,6 +425,7 @@ td.win{color:var(--brass);font-weight:700}
   .ctl{min-height:34px} .btn{padding:8px 13px;font-size:13px}
 }
 </style>
+<link rel="stylesheet" href="theme.css">
 
 <div class="room">
   <header class="bar">
@@ -436,9 +439,13 @@ td.win{color:var(--brass);font-weight:700}
     <button class="tbtn" id="bSound" aria-pressed="true" title="効果音">🔊 音</button>
     <button class="tbtn" id="bScore">得点表</button>
     <button class="tbtn" id="bRules">ルール</button>
+    <button class="tbtn" id="bPause">一時停止</button>
   </header>
 
   <div class="stage" id="stage">
+    <div class="table-brand" aria-hidden="true">ONU<span>THE SOLO CARD LOUNGE</span></div>
+    <div class="turn-status" id="turnStatus" role="status">あなたの席を、用意しました。</div>
+    <div class="direction-label" id="directionLabel"></div>
     <div class="dial" id="dial"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="46"></circle>
       <g><path d="M50 1 L56 9 L44 9 Z"></path><path d="M99 50 L91 56 L91 44 Z"></path>
          <path d="M50 99 L44 91 L56 91 Z"></path><path d="M1 50 L9 44 L9 56 Z"></path></g></svg></div>
@@ -474,7 +481,7 @@ td.win{color:var(--brass);font-weight:700}
       <span class="spacer"></span>
       <span class="meta" id="myTotal"></span>
     </div>
-    <div class="hint" id="hint"></div>
+    <div class="hint" id="hint" role="status" aria-live="polite"></div>
     <div class="ctl" id="ctl"></div>
   </div>
 </div>
@@ -483,8 +490,8 @@ td.win{color:var(--brass);font-weight:700}
 <div class="arrow" id="arrow" hidden><svg viewBox="0 0 34 46" aria-hidden="true">
   <path d="M17 45 L3 23 h8.5 V3 h11 v20 H31 Z"></path></svg></div>
 <div class="fx" id="fx"></div>
-<div class="seal" id="seal"><span>オヌ</span></div>
-<div class="veil" id="veil" hidden><div class="sheet" id="sheet"></div></div>
+<div class="seal" id="seal" aria-live="polite"><div class="call-panel"><div class="call-kicker">ONE CARD LEFT</div><div class="call-title">ONU<span class="call-dot">.</span></div><div class="call-caption">残り1枚。勝負は、ここから。</div><div class="call-line"></div></div></div>
+<div class="veil" id="veil" hidden><div class="sheet" id="sheet" role="dialog" aria-modal="true" tabindex="-1" aria-label="ゲームメニュー"></div></div>
 
 <script>
 "use strict";
@@ -696,7 +703,9 @@ const SCENES={
 
 /* ═══════════ 状態 ═══════════ */
 const NAMES=["あなた","コウ","ミナ","レン"];
-let REACT_MS=3000;
+let REACT_MS=6000;
+const PACES={relaxed:{label:"ゆっくり",ms:6000,reaction:3400,eye:.45,jump:.25},standard:{label:"スタンダード",ms:3000,reaction:1500,eye:.65,jump:.45},expert:{label:"チャレンジ",ms:2200,reaction:800,eye:.9,jump:.7}};
+let selectedPace="relaxed";
 const CPU_MIN=700, CPU_VAR=550, SPE_EYE=0.65;
 const MOTION=!matchMedia("(prefers-reduced-motion: reduce)").matches;
 let G=null, sel=new Set(), timers=[];
@@ -738,10 +747,32 @@ const $=id=>document.getElementById(id);
 
 function newGame(maxRounds,tmode){
   G={maxRounds,round:0,totals:[0,0,0,0],history:[],dealer:0,lastWinner:null,players:null,
-     tutorial:!!tmode,tmode:tmode||null,
+     tutorial:!!tmode,tmode:tmode||null,pace:PACES[selectedPace],seats:[0,1,2,3],
      tips:new Set(),hold:false,held:[],ipEnd:0,ipLeft:0,active:null};
-  REACT_MS=tmode?4600:3000;
-  startRound();
+  REACT_MS=tmode?4600:G.pace.ms;
+  if(tmode)startRound(); else decideSeats();
+}
+function nextSeat(pi,steps=1){return G.seats[((G.seats.indexOf(pi)+G.dir*steps)%4+4)%4];}
+function decideSeats(){
+  const deck=shuffle(buildDeck()),draws=NAMES.map((_,i)=>({i,c:deck.pop(),ties:[]}));
+  function sortGroup(group){
+    group.sort((a,b)=>pts(b.c)-pts(a.c));
+    const out=[];
+    for(let j=0;j<group.length;){
+      let end=j+1;while(end<group.length&&pts(group[end].c)===pts(group[j].c))end++;
+      const same=group.slice(j,end);
+      if(same.length>1){
+        const tieDeck=shuffle(buildDeck());
+        same.forEach(x=>{x.ties.push(x.c);x.c=tieDeck.pop();});
+        out.push(...sortGroup(same));
+      }else out.push(...same);
+      j=end;
+    }
+    return out;
+  }
+  const order=sortGroup(draws); G.seats=order.map(x=>x.i);G.firstStarter=G.seats[0];G.dealer=G.seats[3];
+  open(`<div class="kicker">TAKE YOUR SEAT</div><h2>最初の順番が決まりました</h2><p>1枚ずつ引き、点数の大きい順に時計回り。同点の人は引き直しました。</p><div class="seat-draws">${order.map(x=>`<div>${cardEl(x.ties[0]||x.c,"div","")}<b>${NAMES[x.i]}</b><span>${pts(x.ties[0]||x.c)}点${x.ties.length?` · 同点の引き直し ${x.ties.slice(1).concat(x.c).map(pts).join(" → ")}点`:""}</span></div>`).join("")}</div><p><b>${NAMES[G.firstStarter]}</b>から開始。カード配りは${NAMES[G.dealer]}です。各自7枚、${G.maxRounds}ラウンドで競います。</p><div class="rowbtns"><button class="btn pri" id="seatGo">この席で始める</button></div>`,false);
+  $("seatGo").onclick=()=>{close();startRound();};
 }
 function startRound(){
   clearTimers(); sel.clear(); hideCoach();
@@ -767,10 +798,10 @@ function dealRound(){
     G.deck=shuffle(buildDeck());
     for(let r=0;r<7;r++)for(const p of G.players)p.hand.push(G.deck.pop());
     for(;;){ top=G.deck.pop(); if(!isSym(top))break; G.deck.unshift(top); }
-    G.turn=G.lastWinner==null?0:G.lastWinner;
+    G.turn=G.lastWinner==null?G.firstStarter:G.lastWinner;
   }
   G.discard.push(top); G.top=top; G.color=top.color;
-  G.dir=1; G.pending=null; G.phase="deal";
+  G.dir=1; G.pending=null; G.phase="deal";G.outLock=false;
   G.lastPlay=null; G.chain=null; G.canPass=false; G.logs=[]; G.flying=0; G.hideTop=true;
   G.hold=false; G.held=[]; G.ipEnd=0; G.ipLeft=0; G.active=null;
   document.body.classList.remove("holding"); document.body.classList.toggle("tut",!!G.tutorial);
@@ -780,7 +811,7 @@ function dealRound(){
   dealAnimation(()=>{
     G.hideTop=false; render();
     say(`場は ${cname(G.top)}。スターターは ${NAMES[G.turn]}。`);
-    G.phase="idle"; later(beginTurn,340);
+    if(G.tutorial){G.phase="idle"; later(beginTurn,340);}else openReact();
   });
 }
 
@@ -838,7 +869,8 @@ function flyPlay(pi,cards,src){
   if(!MOTION)return;
   const d=rectOf($("discard")), to={left:d.left,top:d.top,width:d.width};
   G.flying++; G.hideTop=true;
-  const done=()=>{ G.flying=Math.max(0,G.flying-1); if(!G.flying){G.hideTop=false;render();} };
+  const state=G;
+  const done=()=>{if(G!==state)return;G.flying=Math.max(0,G.flying-1);if(!G.flying){G.hideTop=false;render();}};
   cards.forEach((c,i)=>{
     fly(src,to,c,{flip:pi!==0,dur:pi===0?340:450,delay:i*70,w:src.width,
       spin:(i-(cards.length-1)/2)*7+(Math.random()*6-3),
@@ -875,7 +907,7 @@ function drawCards(pi,n){
     got.push(G.deck.pop());
   }
   p.hand.push(...got);
-  if(n>=16)p.drew16=true;
+  if(n===16&&got.length===16)p.drew16=true;
   if(p.hand.length>1){p.onu=false;p.forgot=false;}
   flyDraw(pi,got.length);
   return got;
@@ -891,6 +923,7 @@ function matches(c){
 }
 function validPlay(hand,cards){
   if(!cards.length)return "カードを選んでください";
+  if(new Set(cards.map(c=>c.id)).size!==cards.length||cards.some(c=>!hand.includes(c)))return "手札から選んでください";
   const k=key(cards[0]);
   if(cards.some(c=>key(c)!==k))return "重ねだしは同じ数字／同じ文字だけ";
   if(cards.length===hand.length&&cards.some(isSym))return "上がりの札に文字カードは使えません";
@@ -933,33 +966,36 @@ function beginTurn(){
   if(G.phase==="over")return;
   const p=G.players[G.turn];
   G.canPass=false; sel.clear();
-  if(p.forgot){ p.forgot=false; say(`${p.name} はオヌを言い忘れたまま順番が来たので1枚引く。`,"sl"); drawCards(G.turn,1); }
+  if(p.forgot){ p.forgot=false;G.outLock=true;G.canPass=true;say(`${p.name} はオヌを言い忘れたまま順番が来たので1枚引く。`,"sl"); drawCards(G.turn,1); }
   if(G.pending){
     const n=G.pending.n*(G.pending.kind==="d2"?2:4);
-    if(!p.hand.some(c=>c.kind===G.pending.kind)){ forcedDraw(); return; }
+    if(!legalGroups(p).length&&!p.human){ forcedDraw(); return; }
     say(`${p.name}：${SNAME[G.pending.kind]}を重ねるか、${n}枚引くか。`);
   }
   G.phase="turn"; render();
   if(!p.human)later(cpuTurn,CPU_MIN+Math.random()*CPU_VAR);
 }
 function forcedDraw(){
+  if(!G.pending||!["turn","idle"].includes(G.phase))return;
   const pi=G.turn,p=G.players[pi];
   const n=G.pending.n*(G.pending.kind==="d2"?2:4);
-  G.pending=null; G.phase="out"; render(); setIP("out");
+  clearTimers();G.pending=null; G.phase="out";G.outLock=true;render(); setIP("out");
   say(`${p.name} が ${n}枚 引く（この間は誰も出せません）`,"sl");
   later(()=>{
     drawCards(pi,n);
-    if(n>=16)say(`${p.name} は一度に16枚！ 上がれば「16枚返し」。`,"hi");
-    G.phase="turn"; G.canPass=p.human; render();
+    if(p.drew16)say(`${p.name} は一度に16枚！ 上がれば「16枚返し」。`,"hi");
+    G.phase="turn"; G.canPass=true;setIP("locked");render();
     if(!p.human)later(cpuTurn,CPU_MIN);
   },900);
 }
 
 /* ═══════════ カードを出す ═══════════ */
 function play(pi,cards,chosen){
-  if(G.phase==="over")return;
+  if(G.phase!=="turn"||G.turn!==pi||G.hold)return;
   const p=G.players[pi];
+  if(validPlay(p.hand,cards)||cards[0].color==="w"&&!COLORS.includes(chosen))return;
   if(cards.some(c=>p.hand.indexOf(c)<0))return;   // 二重クリック対策
+  clearTimers();G.outLock=false;
   let src;
   if(pi===0){
     const el=document.querySelector(`#hand .card[data-id="${cards[0].id}"]`);
@@ -979,14 +1015,14 @@ function play(pi,cards,chosen){
     else if(G.tutorial?!(G.scene&&G.scene.forget===pi):Math.random()<0.85){p.onu=true;say(`${p.name}「オヌ！」`,"sl");flashSeal();}
     else p.forgot=true;
   }
-  openReact();
+  applyEffects();openReact();
 }
 
 /* ═══════════ 受付時間 ═══════════ */
 function setIP(mode,ms){
   const lab=$("ipLab"),fill=$("ipFill");
   lab.className="ip-lab"+(mode==="in"?" on":mode==="out"?" out":"");
-  lab.textContent=mode==="in"?"わりこみ受付":mode==="out"?"引いています":"待機";
+  lab.textContent=mode==="in"?"わりこみ受付":mode==="out"?"引いています":mode==="locked"?"札が出るまで受付休止":mode==="live"?"わりこみ可能":"待機";
   fill.style.transition="none"; fill.style.transform="scaleX(1)";
   G.ipLeft=0; G.ipEnd=mode==="in"?Date.now()+ms:0;
   if(mode==="in") requestAnimationFrame(()=>{
@@ -1001,15 +1037,15 @@ function humanCanReact(){
   for(let i=1;i<4;i++) if(G.players[i].forgot)return true;    // 相手の言い忘れを指摘
   const notMine=G.phase==="spe"
     ? (G.chain&&G.chain[G.chain.length-1]!==0)
-    : (G.lastPlay&&G.lastPlay.by!==0);
+    : (!G.lastPlay||G.lastPlay.by!==0);
   if(notMine&&me.hand.length>=2&&sum(me.hand)===pts(G.top)&&!me.hand.some(isSym))return true;  // オヌスペ
   if(G.phase!=="spe"&&G.lastPlay&&G.lastPlay.by!==0){          // 割り込み
-    const ex=me.hand.filter(c=>c.color===G.color&&key(c)===key(G.top));
+    const ex=me.hand.filter(c=>canJump(0,c));
     if(ex.length&&(me.hand.length>1||me.onu))return true;
   }
   if(G.phase==="spe"&&G.chain){                               // オヌスペ破り
     const last=G.chain[G.chain.length-1];
-    if(me.hand.length===1&&me.onu&&0===((last+G.dir)%4+4)%4){
+    if(me.hand.length===1&&me.onu&&0===nextSeat(last)){
       const c=me.hand[0];
       if(!isSym(c)&&(c.color===G.color||(c.kind==="num"&&G.top.kind==="num"&&c.num===G.top.num)))return true;
     }
@@ -1026,55 +1062,74 @@ function openReact(){
     later(()=>{
       if(G.phase!=="react")return;
       const p=G.players[pi];
-      if(pi!==G.lastPlay.by&&p.hand.length>=2&&sum(p.hand)===pts(G.top)&&!p.hand.some(isSym)
-         &&Math.random()<SPE_EYE){ doSpe(pi); return; }
-      if(pi===G.lastPlay.by)return;
-      const ex=p.hand.filter(c=>c.color===G.color&&key(c)===key(G.top));
+      if(canSpe(pi)&&Math.random()<G.pace.eye){ doSpe(pi); return; }
+      const ex=p.hand.filter(c=>canJump(pi,c));
       if(!ex.length)return;
       if(p.hand.length===1&&!(p.onu&&!isSym(ex[0])))return;
-      if(Math.random()<0.45)doWarikomi(pi,ex[0]);
-    },700+idx*280+Math.random()*400);
+      if(Math.random()<G.pace.jump)doWarikomi(pi,ex[0]);
+    },G.pace.reaction+idx*140+Math.random()*200);
   });
-  if(G.players[0].forgot&&!G.tutorial) later(()=>{
-    if(G.phase!=="react"||!G.players[0].forgot)return;
-    G.players[0].forgot=false;
-    say(`${G.players[1+(Math.random()*3|0)].name}「オヌ言ってない！」→ あなたは4枚引いた。`,"sl");
-    drawCards(0,4); render();
-  },2000);
+  if(!G.tutorial)G.players.forEach((p,pi)=>{
+    if(!p.forgot)return;
+    later(()=>{
+      if(!inPlay()||!p.forgot)return;
+      const accusers=[1,2,3].filter(i=>i!==pi);
+      if(Math.random()>.85)return;
+      p.forgot=false;
+      say(`${G.players[accusers[Math.random()*accusers.length|0]].name}「オヌ言ってない！」→ ${p.name}は4枚引いた。`,"sl");
+      drawCards(pi,4);render();
+    },G.pace.reaction+300);
+  });
   later(()=>{ if(G.phase==="react")closeReact(); },ms);
 }
-function closeReact(){ setIP("idle"); applyEffects(); render(); later(beginTurn,260); }
+function closeReact(){ G.phase="idle";setIP("live");render();later(beginTurn,260); }
 function applyEffects(){
   const by=G.lastPlay.by,n=G.lastPlay.n,k=G.lastPlay.cards[0].kind;
   let adv=1;
   if(k==="rev"){ if(n%2===1){G.dir*=-1;SFX.reverse();say("逆回りになった。");} else say("リバース偶数枚 → 向きはそのまま。"); }
   else if(k==="skip"){ adv=2*n; SFX.skip(); say(`${2*n}人先へ。`); }
-  else if(k==="d2"||k==="wd4"){ G.pending={kind:k,n}; }
-  G.turn=((by+G.dir*adv)%4+4)%4;
+  else if(k==="d2"||k==="wd4"){ G.pending={kind:k,n:n+(G.pending?.kind===k?G.pending.n:0)}; }
+  G.turn=nextSeat(by,adv);
+}
+function inPlay(){return !!G&&!G.outLock&&["react","turn","spe"].includes(G.phase);}
+function canSpe(pi){
+  const p=G.players[pi];return inPlay()&&G.lastPlay?.by!==pi&&p.hand.length>=2&&!p.hand.some(isSym)&&sum(p.hand)===pts(G.top);
+}
+function canJump(pi,c){
+  const p=G.players[pi];return inPlay()&&G.phase!=="spe"&&c.color===G.top.color&&key(c)===key(G.top)&&p.hand.includes(c)&&(p.hand.length>1||p.onu&&!isSym(c));
+}
+function canBreak(pi){
+  const p=G.players[pi],c=p.hand[0],last=G.chain?.at(-1);
+  return inPlay()&&G.phase==="spe"&&last!==undefined&&nextSeat(last)===pi&&p.hand.length===1&&p.onu&&!isSym(c)&&matches(c);
 }
 
 /* ═══════════ 特殊上がり ═══════════ */
-function doWarikomi(pi,card){
-  if(G.phase==="over"||G.players[pi].hand.indexOf(card)<0)return;
+function doWarikomi(pi,selection,chosen){
+  const cards=Array.isArray(selection)?selection:[selection],card=cards[0],hand=G.players[pi].hand;
+  if(!card||!canJump(pi,card)||G.hold||cards.some(c=>!hand.includes(c)||key(c)!==key(card))||new Set(cards).size!==cards.length)return;
+  if(cards.length===hand.length&&cards.some(isSym))return;
+  if(card.color==="w"&&!COLORS.includes(chosen)){
+    if(pi===0){askColor(cards,color=>doWarikomi(pi,cards,color));return;}
+    chosen=COLORS.reduce((a,b)=>G.players[pi].hand.filter(c=>c.color===b).length>G.players[pi].hand.filter(c=>c.color===a).length?b:a,"r");
+  }
   clearTimers(); const p=G.players[pi];
   const el=pi===0?document.querySelector(`#hand .card[data-id="${card.id}"]`):null;
   const src=el?rectOf(el):seatRect(pi);
-  const out=p.hand.length===1&&p.onu;
-  say(`${p.name} 割り込み！ ${cname(card)}`,"hi");
-  p.hand.splice(p.hand.indexOf(card),1);
-  G.discard.push(card); G.top=card; G.color=card.color;
-  G.lastPlay={by:pi,cards:[card],n:1};
-  flyPlay(pi,[card],src);
-  if(!p.hand.length){ finish(pi,out&&!isSym(card)?"warikomi":"kasane"); return; }
+  say(`${p.name} 割り込み！ ${cards.map(cname).join("・")}`,"hi");
+  cards.forEach(c=>p.hand.splice(p.hand.indexOf(c),1));
+  G.discard.push(...cards); G.top=cards.at(-1); G.color=G.top.color==="w"?chosen:G.top.color;
+  G.lastPlay={by:pi,cards,n:cards.length};
+  flyPlay(pi,cards,src);
+  if(!p.hand.length){ finish(pi,cards.length===1?"warikomi":"kasane"); return; }
   if(p.hand.length===1&&!p.onu){
     if(p.human)p.forgot=true;
     else if(G.tutorial?!(G.scene&&G.scene.forget===pi):Math.random()<0.85){p.onu=true;say(`${p.name}「オヌ！」`,"sl");}
     else p.forgot=true;
   }
-  openReact();
+  applyEffects();openReact();
 }
 function doSpe(pi){
-  if(G.phase==="over"||G.players[pi].hand.length<2)return;
+  if(!canSpe(pi)||G.phase==="spe"||G.hold)return;
   clearTimers(); const p=G.players[pi],cards=p.hand.slice(),src=seatRect(pi);
   say(`${p.name}「オヌスペ！」 ${cards.length}枚 = ${sum(cards)}点`,"sl");
   p.hand.length=0;
@@ -1092,16 +1147,16 @@ function openSpeWindow(){
   (G.tutorial?[]:shuffle([1,2,3])).forEach((pi,idx)=>later(()=>{
     if(G.phase!=="spe")return;
     const p=G.players[pi]; if(!p.hand.length||pi===last)return;
-    if(p.hand.length>=2&&sum(p.hand)===pts(G.top)&&!p.hand.some(isSym)&&Math.random()<SPE_EYE){ speReturn(pi); return; }
-    if(p.hand.length===1&&p.onu&&pi===((last+G.dir)%4+4)%4){
+    if(canSpe(pi)&&Math.random()<G.pace.eye){ speReturn(pi); return; }
+    if(p.hand.length===1&&p.onu&&pi===nextSeat(last)){
       const c=p.hand[0];
       if(!isSym(c)&&(c.color===G.color||(c.kind==="num"&&G.top.kind==="num"&&c.num===G.top.num))) speBreak(pi);
     }
-  },750+idx*300+Math.random()*400));
+  },G.pace.reaction+idx*140+Math.random()*200));
   later(()=>{ if(G.phase==="spe")finishChain(); },ms);
 }
 function speReturn(pi){
-  if(G.phase==="over"||G.players[pi].hand.length<2)return;
+  if(G.phase!=="spe"||!canSpe(pi)||G.hold)return;
   clearTimers(); const p=G.players[pi],cards=p.hand.slice(),src=seatRect(pi);
   say(`${p.name}「オヌスペ返し！」 ${cards.length}枚 = ${sum(cards)}点`,"sl");
   p.hand.length=0; G.discard.push(...cards); G.top=cards[cards.length-1]; G.color=G.top.color;
@@ -1109,7 +1164,7 @@ function speReturn(pi){
   flyPlay(pi,cards,src); flashSeal("返し"); render(); openSpeWindow();
 }
 function speBreak(pi){
-  if(G.phase==="over"||!G.players[pi].hand.length)return;
+  if(!canBreak(pi)||G.hold)return;
   clearTimers(); const p=G.players[pi],c=p.hand.pop(),src=seatRect(pi);
   say(`${p.name}「オヌスペ破り！」 ${cname(c)}`,"sl");
   G.discard.push(c); G.top=c; G.color=c.color;
@@ -1129,6 +1184,9 @@ function cpuTurn(){
   }
   const groups=legalGroups(p);
   if(!groups.length){
+    if(G.pending){forcedDraw();return;}
+    if(G.canPass){say(`${p.name}「なし」`);closeAfterPass();return;}
+    G.outLock=true;G.canPass=true;setIP("out");
     say(`${p.name} は山から1枚引いた。`); drawCards(pi,1); render();
     later(()=>{
       const g2=legalGroups(p);
@@ -1146,6 +1204,8 @@ function best(p,groups){
     if(g[0].kind==="wd4")s-=14; else if(g[0].kind==="wild")s-=8;
     if(p.hand.length-g.length===0)s+=200;
     if(p.hand.length-g.length===1)s+=25;
+    const remaining=p.hand.filter(c=>!g.includes(c));
+    if(remaining.length&&remaining.every(isSym))s-=45;
     if(s>bs){bs=s;bg=g;}
   }
   return bg;
@@ -1160,7 +1220,7 @@ function commitCpu(pi,cards){
   }
   play(pi,cards,chosen);
 }
-function closeAfterPass(){ G.turn=((G.turn+G.dir)%4+4)%4; render(); later(beginTurn,320); }
+function closeAfterPass(){clearTimers();G.outLock=true;G.phase="idle";G.turn=nextSeat(G.turn);setIP("locked");render();later(beginTurn,320);}
 
 /* ═══════════ 得点 ═══════════ */
 const BONUS={onu:-20,spe:-20,kasane:0,warikomi:0};
@@ -1196,6 +1256,9 @@ function render(){
   $("cRound").textContent=G.round; $("cRoundMax").textContent=G.maxRounds;
   $("cDeck").textContent=G.deck.length;
   $("dial").classList.toggle("rev",G.dir===-1);
+  $("directionLabel").textContent=(G.dir===1?"↻ 時計回り":"↺ 逆回り")+" · "+[0,1,2,3].map(n=>NAMES[nextSeat(0,n)]).join(" → ");
+  const pendingCount=G.pending?G.pending.n*(G.pending.kind==="d2"?2:4):0;
+  $("turnStatus").innerHTML=G.phase==="over"?"ROUND COMPLETE":G.phase==="deal"?"カードを配っています…":G.phase==="spe"?"オヌスペ！ 返し・破りを受付中":G.phase==="react"?"チャンスを探そう。割り込み受付中":G.phase==="out"?"カードを引いています":`<span class="live-dot"></span>${G.turn===0?"あなたの番です":NAMES[G.turn]+"が考えています"}${pendingCount?`<b class="draw-count">+${pendingCount}枚</b>`:""}`;
   const dealing=G.phase==="deal";
 
   for(let i=1;i<=3;i++){
@@ -1203,8 +1266,9 @@ function render(){
     const n=dealing?0:p.hand.length,show=Math.min(n,12),mid=(show-1)/2;
     const fan=Array.from({length:show},(_,j)=>
       backEl(`--rot:${(j-mid)*5}deg;--dy:${Math.abs(j-mid)**2*.9}px`)).join("");
-    $("seat"+i).className="seat s"+i+(act?" on":"");
-    $("seat"+i).innerHTML=`<div class="plate"><span class="pname">${p.name}</span>`+
+    const position=((G.seats.indexOf(i)-G.seats.indexOf(0))%4+4)%4;
+    $("seat"+i).className="seat s"+position+(act?" on":"");
+    $("seat"+i).innerHTML=`<div class="avatar avatar-${i}" aria-hidden="true">${avatarSVG(i)}</div><div class="plate"><span class="pname">${p.name}</span>`+
       (p.onu?'<span class="badge onu">オヌ</span>':"")+
       (G.dealer===i?'<span class="badge deal">配り</span>':"")+
       `<span class="pcnt">${n}枚 · ${G.totals[i]>0?"+":""}${G.totals[i]}</span></div>
@@ -1228,6 +1292,7 @@ function render(){
   const hn=dealing?0:me.hand.length, mid=(hn-1)/2;
   const ov=hn>11?-42:hn>9?-36:hn>7?-28:-20;
   const handEl=$("hand");
+  handEl.classList.toggle("many",hn>10);
   const wantKey=dealing?"":me.hand.map(c=>c.id).join(",");
   if(handEl.dataset.key!==wantKey){
     const prev=new Set([...handEl.children].map(el=>+el.dataset.id));
@@ -1247,7 +1312,10 @@ function render(){
       if(!sel.size)ok=!validPlay(me.hand,[c]);
       else{ const first=me.hand.find(x=>x.id===[...sel][0]); ok=sel.has(c.id)||(!!first&&key(c)===key(first)); }
     }
-    el.disabled=!ok;
+    el.disabled=!ok||G.hold;
+    el.classList.toggle("playable",ok&&!sel.has(c.id));
+    el.setAttribute("aria-pressed",sel.has(c.id)?"true":"false");
+    el.title=cname(c)+" · "+pts(c)+"点"+(ok?" · 選べます":"");
     el.classList.toggle("sel",sel.has(c.id));
     el.onclick=()=>{
       if(sel.has(c.id)){ sel.delete(c.id); SFX.unpick(); }
@@ -1269,6 +1337,12 @@ function paintControls(){
     b.push(btn(`出す${cards.length>1?` ${cards.length}枚`:""}`,"pri",!cards.length||!!err,()=>{
       if(cards[0].color==="w")askColor(cards); else play(0,cards,null);
     }));
+    if(!G.tutorial&&cards.length&&me.hand.length-cards.length===1&&!err){
+      b.push(btn("オヌ！と言って出す","onu",false,()=>{
+        const submit=color=>{me.onu=true;say("あなた「オヌ！」","sl");flashSeal();play(0,cards,color);};
+        if(cards[0].color==="w")askColor(cards,submit);else submit(null);
+      }));
+    }
     if(G.pending){
       const n=G.pending.n*(G.pending.kind==="d2"?2:4);
       b.push(btn(`${n}枚引く`,"",false,()=>{sel.clear();forcedDraw();}));
@@ -1278,31 +1352,37 @@ function paintControls(){
       msg="引いた札もそのまま出せます。出さないなら「なし」。";
     }else{
       b.push(btn("山から1枚引く","",false,()=>{
-        sel.clear(); const g=drawCards(0,1); say(`あなたは ${cname(g[0])} を引いた。`); G.canPass=true; render();
+        if(G.phase!=="turn"||G.turn!==0||G.canPass||G.hold)return;
+        clearTimers();sel.clear();G.outLock=true;setIP("locked");const g=drawCards(0,1);say(g.length?`あなたは ${cname(g[0])} を引いた。`:"山にも捨て札にも引けるカードがありません。「なし」で進めます。");G.canPass=true;render();
       }));
       msg=!legalGroups(me).length?"出せる札がありません。山から引いてください。"
         :err?err
         :cards.length>1&&new Set(cards.map(c=>c.color)).size>1
           ?`重ねだし：<b>${cname(cards[cards.length-1])}</b> が場のカードになります。`
-        :"同じ数字／同じ文字なら重ねて選べます。";
+        :cards.length&&me.hand.length-cards.length===1?"残り1枚になります。「オヌ！」も忘れずに。"
+        :"光っている札を選んで「出す」。同じ数字・文字はまとめて選べます。";
     }
-  }else if(G.phase==="react"||G.phase==="spe"){
-    if(me.forgot)b.push(btn("オヌ！","onu",false,()=>{
+  }
+  if(inPlay()){
+    if(me.forgot&&G.phase==="react"&&G.lastPlay?.by===0)b.push(btn("オヌ！","onu",false,()=>{
       me.forgot=false;me.onu=true;say("あなた「オヌ！」","sl");flashSeal();render();
     }));
-    const canSpe=G.phase==="react"?G.lastPlay.by!==0:G.chain[G.chain.length-1]!==0;
-    if(canSpe&&me.hand.length>=2&&sum(me.hand)===pts(G.top)&&!me.hand.some(isSym))
+    if(canSpe(0))
       b.push(btn(G.phase==="spe"?"オヌスペ返し！":"オヌスペ！","react",false,
-        ()=>{ if(G.phase==="spe")speReturn(0); else doSpe(0); }));
-    if(G.phase==="react"&&G.lastPlay.by!==0){
-      const ex=me.hand.filter(c=>c.color===G.color&&key(c)===key(G.top));
-      if(ex.length&&(me.hand.length>1||me.onu))
+        ()=>chooseSpeTop()));
+    if(G.phase!=="spe"){
+      const ex=me.hand.filter(c=>canJump(0,c));
+      if(ex.length){
         b.push(btn(me.hand.length===1?"割り込み上がり！":"割り込み","react",false,
           ()=>doWarikomi(0,ex[0])));
+        const stack=[ex[0],...me.hand.filter(c=>c!==ex[0]&&key(c)===key(ex[0]))];
+        if(!G.tutorial&&stack.length>1&&!(stack.length===me.hand.length&&stack.some(isSym)))
+          b.push(btn(`${stack.length}枚まとめて割り込み`,"react",false,()=>doWarikomi(0,stack)));
+      }
     }
     if(G.phase==="spe"){
       const last=G.chain[G.chain.length-1];
-      if(me.hand.length===1&&me.onu&&0===((last+G.dir)%4+4)%4){
+      if(me.hand.length===1&&me.onu&&0===nextSeat(last)){
         const c=me.hand[0];
         if(!isSym(c)&&(c.color===G.color||(c.kind==="num"&&G.top.kind==="num"&&c.num===G.top.num)))
           b.push(btn("オヌスペ破り！","react",false,()=>speBreak(0)));
@@ -1310,10 +1390,10 @@ function paintControls(){
     }
     for(let i=1;i<4;i++) if(G.players[i].forgot)
       b.push(btn(`${G.players[i].name}のオヌ忘れを指摘`,"react",false,()=>{
-        const p=G.players[i];p.forgot=false;
+        const p=G.players[i];if(!inPlay()||!p.forgot||G.hold)return;p.forgot=false;
         say(`あなた「オヌ言ってない！」→ ${p.name} は4枚引いた。`,"hi");drawCards(i,4);render();
       }));
-    msg=b.length?"いまなら宣言・わりこみができます。":"受付中…";
+    if(!myTurn)msg=canSpe(0)?`手札 ${sum(me.hand)}点 ＝ 場 ${pts(G.top)}点。オヌスペのチャンス！`:b.length?"いまなら宣言・わりこみができます。":G.phase==="turn"?`${NAMES[G.turn]}の番。色と数字を見て、次の手を考えよう。`:"場と色も数字も同じ札で割り込み。手札合計が場の点数と同じならオヌスペ。";
   }else if(G.phase==="over"&&G.resultSeen){
     // 「卓を見る」で結果シートを閉じても、ここから必ず次へ進める
     const last=G.round>=G.maxRounds;
@@ -1327,7 +1407,7 @@ function paintControls(){
     msg="このラウンドは終了。卓を見終わったら次へ進んでください。";
   }else if(G.phase==="out")msg="カードを引いています — この間は誰も出せません。";
   else if(G.phase==="deal")msg="配っています…";
-  else if(G.phase==="turn")msg=`${G.players[G.turn].name} の番。`;
+  else if(G.phase==="turn"&&!myTurn)msg=`${G.players[G.turn].name} の番。`;
   ctl.innerHTML=""; b.forEach(x=>ctl.appendChild(x));
   hint.innerHTML=msg;
   tutStep();
@@ -1337,13 +1417,19 @@ function btn(label,cls,disabled,fn){
   e.className="btn "+(cls||""); e.textContent=label; e.disabled=!!disabled; e.onclick=fn;
   return e;
 }
+let sealTimer=null;
 function flashSeal(text){
   const s=$("seal"),t=text||"オヌ";
   if(t==="オヌ")SFX.onu();
   else if(t==="オヌスペ"||t==="返し"||t==="破り")SFX.spe();
-  s.firstElementChild.textContent=t;
-  s.firstElementChild.style.fontSize=t.length>3?"clamp(30px,8vw,64px)":"clamp(52px,13vw,110px)";
+  const styles={"オヌ":["ONE CARD LEFT","ONU","残り1枚。勝負は、ここから。"],"オヌスペ":["ONU SPECIAL","オヌスペ","その合計が、切り札になる。"],"返し":["COUNTER PLAY","オヌスペ返し","その上がり、いただきます。"],"破り":["COUNTER PLAY","オヌスペ破り","最後の1枚で、逆転。"],"あがり":["ROUND CLEAR","あがり！","見事な一手。"],"終了":["ROUND COMPLETE","ラウンド終了","次のラウンドへ、つなげよう。"]};
+  const [kicker,title,caption]=styles[t]||["ONU LOUNGE",t,""];
+  s.querySelector(".call-kicker").textContent=kicker;
+  s.querySelector(".call-title").innerHTML=title+(t==="オヌ"?'<span class="call-dot">.</span>':"");
+  s.querySelector(".call-title").classList.toggle("jp",t!=="オヌ");
+  s.querySelector(".call-caption").textContent=caption;
   s.classList.remove("go"); void s.offsetWidth; s.classList.add("go");
+  clearTimeout(sealTimer);sealTimer=setTimeout(()=>s.classList.remove("go"),1750);
 }
 
 /* ═══════════ チュートリアル ═══════════ */
@@ -1394,7 +1480,7 @@ const STEPS_UNO={
   {when:c=>c.myTurn&&c.me.hand.length===3&&c.sel()>0,point:c=>c.button("出す"),
    text:"<em>「出す」</em>を押します。"},
   {stop:1,when:c=>c.g.phase==="turn"&&c.g.turn===2,say:[
-   {t:"順番がコウを飛び越して<em>ミナ</em>に移りました。ONU では<em>2枚同時なら2人ぶん</em>飛ばせます。",show:c=>{demoTagTop(c.el("#seat1"),"飛ばされた","no");demoRing(c.el("#seat2"));}}]},
+   {t:"順番がコウを飛び越して<em>ミナ</em>に移りました。Skipは<em>枚数×2人先</em>へ。2枚なら4人先なので、この4人卓では自分に戻ります。",show:c=>{demoTagTop(c.el("#seat1"),"飛ばされた","no");demoRing(c.el("#seat2"));}}]},
   {stop:1,when:c=>c.g.dir===-1,say:[
    {t:"ミナが Reverse。<em>回る向きが逆</em>になりました。ONU では<em>偶数枚まとめると向きは元のまま</em>という違いがあります。",show:c=>{demoRing(c.el("#dial"),0);}}]},
   {stop:1,when:c=>c.myTurn&&c.me.hand.length===2,say:[
@@ -1541,7 +1627,7 @@ const STEPS_INTRO={
   {when:c=>c.myTurn&&c.me.hand.length===3&&c.sel()>0,point:c=>c.button("出す"),
    text:"<em>「出す」</em>を押して、順番がどう動くか見てください。"},
   {stop:1,when:c=>c.g.phase==="turn"&&c.g.turn===2,say:[
-   {t:"順番が<em>コウを飛び越して</em>ミナに移りました。これがスキップの効果です。（2枚同時に出せば2人ぶん飛ばせます）",show:c=>{demoTagTop(c.el("#seat1"),"飛ばされた","no");demoRing(c.el("#seat2"));}}]},
+   {t:"順番が<em>コウを飛び越して</em>ミナに移りました。Skipは<em>枚数×2人先</em>へ。2枚なら4人先なので、この4人卓では自分に戻ります。",show:c=>{demoTagTop(c.el("#seat1"),"飛ばされた","no");demoRing(c.el("#seat2"));}}]},
   {stop:1,when:c=>c.g.dir===-1,say:[
    {t:"今度はミナが<em>リバース</em>を出しました。<em>回る順番が逆</em>になり、すぐあなたの番が戻ってきます。",show:c=>{demoRing(c.el("#dial"),0);}}]},
   {stop:1,when:c=>c.myTurn&&c.me.hand.length===2,say:[
@@ -1685,10 +1771,11 @@ function advanceSay(){
   G.tapSeen=(G.tapSeen||0)+1;
   c.innerHTML='<div class="body"><p></p></div>'+
     '<div class="foot">'+
-    (G.tapSeen<=3?'<span class="tapline">この枠内のどこを押しても次へ進めます</span>':'')+
-    '<span class="caret"></span></div>';
+    '<span class="tapline">この枠を押す、または Enter で次へ</span><span class="caret"></span></div>';
   c.hidden=false;
   c.onclick=onSayClick;
+  c.tabIndex=0;c.setAttribute("role","button");c.setAttribute("aria-label","説明を次へ進める");
+  c.onkeydown=e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();onSayClick();}};
   c.querySelector(".caret").textContent="▼";
   // 先に本文の高さを確定させてから図を描く（描いたあとに枠が伸びると位置がずれるため）
   typeInto(c.querySelector("p"),s.t,()=>{ const b=c.querySelector(".caret"); if(b)b.classList.add("on"); });
@@ -1709,6 +1796,7 @@ function coachDo(html){
   c.className="coach do";
   c.innerHTML='<div class="body"><p></p></div>';
   c.onclick=null;
+  c.onkeydown=null;c.removeAttribute("role");c.removeAttribute("tabindex");c.removeAttribute("aria-label");
   c.hidden=false;
   typeInto(c.querySelector("p"),html);
   fitMsg();
@@ -1812,7 +1900,7 @@ function tutCtx(){
 }
 const tutTrue=(fn,c)=>{ try{ return !!fn(c); }catch(e){ return false; } };
 function tutStep(){
-  if(!G||!G.tutorial)return;
+  if(!G||!G.tutorial||G.hold)return;
   const list=stepsFor(G.round); if(!list)return;
   const c=tutCtx();
   if(G.active!=null){
@@ -1841,21 +1929,48 @@ function showLesson(n){
 
 /* ═══════════ シート ═══════════ */
 const veil=$("veil"),sheet=$("sheet");
+let modalResume=false,previousFocus=null;
 function open(html,dismissible){
+  if(veil.hidden){previousFocus=document.activeElement;modalResume=!!(G&&G.players&&!G.hold&&G.phase!=="over");if(modalResume)holdGame();}
   sheet.innerHTML=html; veil.hidden=false;
+  sheet.classList.toggle("welcome",html.includes('welcome-layout'));
+  document.querySelector(".room").inert=true;
+  sheet.scrollTop=0;sheet.focus();
   veil.dataset.lock=dismissible===false?"1":"0";
   veil.onclick=e=>{ if(dismissible!==false&&e.target===veil)close(); };
 }
-function close(){veil.hidden=true;}
+function close(){veil.hidden=true;document.querySelector(".room").inert=false;if(modalResume){modalResume=false;resumeGame();if(G?.players)render();}if(previousFocus?.isConnected)previousFocus.focus();}
 document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!veil.hidden&&veil.dataset.lock!=="1")close();});
+document.addEventListener("keydown",e=>{
+  if(e.key!=="Tab"||veil.hidden)return;
+  const items=[...sheet.querySelectorAll("button:not(:disabled),select,input,a[href],summary")].filter(x=>x.getClientRects().length);
+  if(!items.length){e.preventDefault();return;}
+  const first=items[0],last=items.at(-1);
+  if(e.shiftKey&&(document.activeElement===first||document.activeElement===sheet)){e.preventDefault();last.focus();}
+  else if(!e.shiftKey&&(document.activeElement===last||document.activeElement===sheet)){e.preventDefault();first.focus();}
+});
 
-function askColor(cards){
+function askColor(cards,submit){
   open(`<div class="kicker">WILD</div><h2>次の色を指定</h2>
   <p>あなたが出した${cname(cards[0])}の後、場の色をここで決めます。</p>
   <div class="colorpick">${COLORS.map(c=>`<button class="cpick" style="--cc:var(--${c})" data-c="${c}">${CN[c]}</button>`).join("")}</div>`,false);
-  sheet.querySelectorAll(".cpick").forEach(b=>b.onclick=()=>{ close(); play(0,cards,b.dataset.c); });
+  sheet.querySelectorAll(".cpick").forEach(b=>b.onclick=()=>{ close(); if(submit)submit(b.dataset.c);else play(0,cards,b.dataset.c); });
+}
+function chooseSpeTop(){
+  if(!canSpe(0)||G.hold)return;
+  const go=()=>{if(G.phase==="spe")speReturn(0);else doSpe(0);};
+  if(G.tutorial){go();return;}
+  const hand=G.players[0].hand;
+  open(`<div class="kicker">ONU SPECIAL</div><h2>いちばん上に置く札を選ぼう</h2><p>手札 ${sum(hand)}点 ＝ 場 ${pts(G.top)}点。全て出してオヌスペ！<br>選んだ札の点数・色が、相手の返し技の条件になります。</p><div class="spe-pick">${hand.map(c=>cardEl(c,"button","")).join("")}</div><div class="rowbtns"><button class="btn" id="speCancel">戻る</button></div>`,false);
+  sheet.querySelectorAll(".card").forEach(b=>b.onclick=()=>{const i=hand.findIndex(c=>c.id===+b.dataset.id);hand.push(...hand.splice(i,1));close();go();});
+  $("speCancel").onclick=close;
+}
+function avatarSVG(i){
+  const hair=["","M12 27 Q5 1 25 5 Q47 2 44 29 L35 16 19 23Z","M10 40 L10 20 Q12 1 27 4 Q47 5 45 40 L37 36 35 15 16 18 17 38Z","M11 25 Q7 4 29 4 L38 8 46 5 44 17 37 24 19 16Z"][i];
+  return `<svg viewBox="0 0 56 56" fill="none"><path d="M5 56 Q8 38 28 38 Q48 38 51 56" fill="var(--avatar-shirt)"/><rect x="23" y="33" width="10" height="12" rx="4" fill="#dba882"/><ellipse cx="28" cy="25" rx="14" ry="17" fill="#efc8a1"/><path d="${hair}" fill="#253039"/><path d="M21 26h1m12 0h1" stroke="#263031" stroke-width="2.8" stroke-linecap="round"/><path d="M24 33q4 3 8 0" stroke="#aa6557" stroke-width="1.5" stroke-linecap="round"/>${i===3?'<path d="M16 24h10v6H16zm14 0h10v6H30zm-4 2h4" stroke="#394751" stroke-width="1.5"/>':""}</svg>`;
 }
 function scoreTable(){
+  if(!G)return '<p class="note">ゲームを始めると、ここに各ラウンドの得点が並びます。</p>';
   const rows=G.history.map(h=>`<tr><td>R${h.round}${h.sixteen?" ⚑":""}</td>`+
     h.scores.map((s,i)=>`<td class="${i===h.winner?"win":""}${s<0?" neg":""}">${s>0?"+":""}${s}</td>`).join("")+"</tr>").join("");
   return `<table><thead><tr><th>ラウンド</th>${NAMES.map(n=>`<th>${n}</th>`).join("")}</tr></thead>
@@ -1881,34 +1996,23 @@ function showRoundSheet(winner,type,scores,sixteen){
 }
 function showFinal(){
   const order=G.totals.map((t,i)=>({t,i})).sort((a,b)=>a.t-b.t);
+  const winners=order.filter(o=>o.t===order[0].t);
   if(order[0].i===0)SFX.win(); else SFX.over();
   open(`<div class="kicker">FINAL · ${G.maxRounds} ROUNDS</div>
-    <h2>${order[0].i===0?"あなたの勝ち":NAMES[order[0].i]+" の勝ち"}</h2>
+    <h2>${winners.map(o=>NAMES[o.i]).join("・")}${winners.length>1?" が同率優勝！":" の勝ち！"}</h2>
     <p class="lead">${G.tutorial?"チュートリアル修了。出す・引く／重ねだし／文字カード／ドロー返し／オヌ宣言／割り込み／オヌスペ、そして得点の集計まで一通り使いました。":"合計点が一番低い人が勝者です。"}</p>\n    ${G.tutorial?'<p>各ラウンドの点を足していき、<b>合計が一番低い人が勝ち</b>。上がりの役（オヌ上がり・オヌスペは −20点、返し／破りは −50点から倍々）でまとめてマイナスを稼げるので、最後まで逆転があります。本番は「ふつうに遊ぶ」から 5／7／9 ラウンドでどうぞ。</p>':""}<h3>順位</h3>
     <table><thead><tr><th>順位</th><th>プレーヤー</th><th>合計</th></tr></thead><tbody>`+
-    order.map((o,r)=>`<tr><td>${r+1}位</td><td>${NAMES[o.i]}</td>
+    order.map((o,r)=>`<tr><td>${order.findIndex(x=>x.t===o.t)+1}位</td><td>${NAMES[o.i]}</td>
       <td class="${o.t<0?"neg":""}">${o.t>0?"+":""}${o.t}</td></tr>`).join("")+
     `</tbody></table><h3>ラウンド別</h3>${scoreTable()}
     <div class="rowbtns"><button class="btn pri" id="again">もう一度</button></div>`,false);
   sheet.querySelector("#again").onclick=()=>{close();showStart();};
 }
 function showStart(){
-  open(`<div class="kicker">SOLO EDITION</div><h2>おひとりONU</h2>
-    <p class="lead">ONU のルールブックをそのまま一人用に。あなた＋CPU3人の4人卓、少ない点数を取った人が勝ちです。</p>
-    <h3>はじめての方へ</h3>
-    <p>短い6ラウンドを実際に遊びながら、1ラウンドにつき1つずつ覚えるモードです。配り札とCPUの動きは決まっていて、その回に覚えることが必ず起きます。<b>UNO を知らない方にも、カードの見かたと順番から説明します。</b></p>
-    <div class="rowbtns" style="margin-top:8px">
-      <button class="btn pri" data-tut="1">チュートリアルを始める</button></div>
-    <h3>ふつうに遊ぶ</h3><p>通常は9回。短く決着をつけたいときは7回か5回。</p>
-    <div class="rowbtns" style="margin-top:8px">
-      <button class="btn" data-n="5">5ラウンド</button>
-      <button class="btn" data-n="7">7ラウンド</button>
-      <button class="btn" data-n="9">9ラウンド</button></div>
-    <h3>この卓での約束ごと</h3>
-    <ul><li>カードが場に置かれるたび、卓の下の細いバーが走ります。これが<b>受付時間</b>。割り込み・オヌスペ・オヌ宣言はこの間だけできます。</li>
-    <li>残り1枚になったら、バーが切れる前に<b>オヌ！</b>を押す。忘れると誰かに指摘されて4枚。</li>
-    <li>上がりの札に文字カード（Skip・Reverse・Draw2・Wild・Wild Draw4）は使えません。</li>
-    <li>Wild Draw4 ×4枚 または Draw2 ×8枚 で16枚引いた人がそのラウンドに上がると<b>16枚返し</b>。</li></ul>`,false);
+  open(`<div class="welcome-layout"><section class="welcome-hero"><div class="kicker">THE SOLO CARD LOUNGE</div><h2>おひとり<span>ONU<span class="logo-period">.</span></span></h2><p class="hero-copy">ひとり時間に、<br>逆転の一手を。</p><div class="hero-cards" aria-hidden="true">${cardEl(pc("b4"),"div","hero-one")}${cardEl(pc("r7"),"div","hero-two")}${cardEl(pc("y7"),"div","hero-three")}</div><div class="hero-foot"><span>YOU + 3 PLAYERS</span><span>少ない点数で、勝つ。</span></div></section><section class="welcome-menu"><div class="kicker">WELCOME TO YOUR TABLE</div><h3>さあ、カードを配ろう。</h3><p class="welcome-desc">色か数字を合わせて、手札を出す。<br>割り込みとオヌスペで、最後まで逆転。</p><div class="learn-entry"><div><span class="eyebrow">はじめてなら、ここから</span><h4>遊びながら覚える</h4><p>カードの見方から、短い6つのレッスン。</p></div><button class="btn pri" data-tut="1">チュートリアルを始める <span aria-hidden="true">↗</span></button></div><div class="play-entry"><h4>ふつうに遊ぶ</h4><label class="pace-label" for="pace">対局のペース</label><select id="pace"><option value="relaxed" ${selectedPace==="relaxed"?"selected":""}>ゆっくり · はじめてにおすすめ</option><option value="standard" ${selectedPace==="standard"?"selected":""}>スタンダード</option><option value="expert" ${selectedPace==="expert"?"selected":""}>チャレンジ</option></select><p class="pace-note" id="paceNote">割り込みの優先受付は6秒。CPUもじっくり反応します。</p><div class="round-options"><button class="btn" data-n="5"><strong>5</strong>ラウンド<span>短くひと勝負</span></button><button class="btn" data-n="7"><strong>7</strong>ラウンド<span>ほどよく遊ぶ</span></button><button class="btn" data-n="9"><strong>9</strong>ラウンド<span>じっくり本番</span></button></div></div><div class="welcome-bottom"><span>上がりは数字の札で。残り1枚で「オヌ！」</span><button class="text-btn" id="startRules">ルールを読む →</button></div></section></div>`,false);
+  $("pace").onchange=e=>{selectedPace=e.target.value;$("paceNote").textContent=`割り込みの優先受付は${PACES[selectedPace].ms/1000}秒。`+(selectedPace==="relaxed"?"CPUもじっくり反応します。":selectedPace==="expert"?"CPUが積極的に返し技を狙います。":"慣れてきたら、このテンポで。");};
+  $("pace").dispatchEvent(new Event("change"));
+  $("startRules").onclick=()=>showRules(true);
   sheet.querySelectorAll("[data-n]").forEach(b=>b.onclick=()=>{close();newGame(+b.dataset.n,null);});
   sheet.querySelectorAll("[data-tut]").forEach(b=>b.onclick=()=>{askExperience();});
 }
@@ -1924,10 +2028,10 @@ function askExperience(){
     '<b>知っている</b> … 「UNO と何が違うのか」を軸に進めます。同じ部分の説明は省きます。</p>',false);
   sheet.querySelectorAll("[data-mode]").forEach(b=>b.onclick=()=>{ close(); newGame(6,b.dataset.mode); });
 }
-function showRules(){
+function showRules(fromStart=false){
   open(`<div class="kicker">RULE BOOK</div><h2>ONU の要点</h2>
   <h3>UNO との違いだけ先に</h3>
-  <ul><li><b>点が少ないほうが勝ち。</b>上がった人はマイナス点、上がれなかった人は手札に残った点が失点。</li>
+  <ul><li><b>点が少ないほうが勝ち。</b>オヌ上がり・オヌスペは−20点、重ね上がり・割り込み上がりは0点。上がれなかった人は手札に残った点が失点。</li>
   <li><b>同じ数字は何枚でも同時に出せる</b>（重ねだし）。ただし<b>上がりの札に記号カードは使えない</b>。</li>
   <li><b>自分の番でなくても出せる場面がある。</b>カードが出た直後の数秒間（受付時間）に、割り込み・オヌスペを狙える。</li>
   <li><b>Draw2 / Wild Draw4 の重ね返しが正式ルール。</b>返せなかった人がまとめて引く。</li>
@@ -1941,6 +2045,7 @@ function showRules(){
   <li><b>割り込み</b>：色も数字（文字）も場と同じカードは、順番に関係なく出せる。次はその人の次の人から。</li>
   <li>Reverse は奇数枚で逆回り、偶数枚でそのまま。Skip は 2×枚数 人先へ。</li>
   <li>Draw2 / Wild Draw4 は重ねて返せる。返せなかった人が（枚数×2）／（枚数×4）枚引く。<b>引いている間は誰もカードを出せない</b>（ルールブックの「アウトオブプレイ」）。</li></ul>
+  <p>引いた後は、引いた札を含めて手札から出せます。出さない場合は「なし」。次の人が札を出すまで、割り込み・オヌスペの受付は閉じたままです。Draw2にはDraw2、Wild Draw4にはWild Draw4だけを重ねて返せます。</p>
   <h3>上がり方と得点</h3>
   <ul><li><b>オヌ上がり</b> −20点 … 残り1枚で「オヌ！」と宣言し、最後の1枚を出して上がる。</li>
   <li><b>オヌスペ</b> −20点 … 場のカードの点数と手札（2枚以上）の合計が等しいとき、順番に関係なく全部出して上がる。自分が出したカードには不可。</li>
@@ -1948,14 +2053,17 @@ function showRules(){
   <li><b>重ね上がり</b> 0点 … 同じ数字のカード2枚以上を出して上がる。</li>
   <li><b>割り込み上がり</b> 0点 … オヌ状態で、場と同色同数字のカードを割り込んで上がる。</li>
   <li><b>16枚返し</b> … 一度に16枚引いた人がそのラウンドで上がると、その人 −40点、他の人は手札合計の2倍。</li></ul>
+  <h3>返し・破りを、例で覚える</h3><p><b>返し：</b>Aが「赤2＋青4」でオヌスペし、青4をいちばん上に置いた。Bが「黄1＋緑3」を持っていれば、合計4なのでオヌスペ返し！<br><b>破り：</b>Aの次の順番の人がオヌ状態で、青の数字札か、色を問わず4を持っていれば、その1枚でオヌスペ破り！</p><p>どちらにも続けて返し・破りができます。A → B → C → Dと続くと、得点は順に <b>+50、+100、+200、−200</b>。出す札は全て数字札である必要があります。</p>
   <h3>ラウンド終了</h3>
   <p>誰かが上がった時点で終了。他の人は手札の点数がそのまま加算されます。決めたラウンド数を終えて、合計点が一番低い人が勝者。</p>
   <h3>一人用にした部分</h3>
-  <ul><li>本来は早い者勝ちのリアルタイム勝負ですが、ここでは1枚出るごとの<b>3秒の受付時間</b>（ルールブックの「インプレイ」）に置き換えています。CPUもこの間に割り込み・オヌスペを狙ってきます。</li>
-  <li>オヌの言い忘れは、受付時間のうちに指摘されれば4枚、指摘されずに順番が戻ってくれば1枚引きます（CPUの言い忘れはあなたが指摘できます）。</li>
+  <ul><li>札が出た直後に、次の通常手番を待つ<b>優先受付</b>を設けています。ゆっくり6秒、スタンダード3秒、チャレンジ2.2秒。通常手番になっても、誰かが引き始めるまでは割り込み・オヌスペを使えます。説明や一時停止の間はCPUも止まります。</li>
+  <li>残り1枚になる手では「オヌ！と言って出す」も選べます。通常の「出す」の後は、その札の優先受付中に「オヌ！」を押せます。言い忘れの指摘は本人の次の手番まで可能（引いている間を除く）。指摘されれば4枚、指摘されず順番が戻れば1枚引きます。</li>
   <li>CPUはオヌスペを常に見抜くわけではありません。あなたが先に気づけば、その場は取れます。</li></ul>
+  <details class="rule-note"><summary>ルールブックの解釈と、一人用で補った部分</summary><p>Wild Draw4の累積について、本文の「×2」と16枚返しの「4枚で16枚」が矛盾するため、本ゲームは<b>×4</b>を採用しています。原文の誤記と断定するものではありません。</p><p>通常ドローは1手番1枚。デッキは108枚（各色0が1枚、1〜9と文字札が各2枚、WildとWild Draw4が各4枚）。これらの詳細は提示された本文にないため、本ゲームの設定です。同点は同率順位とします。</p><p>16枚返しと返し・破りが同時に成立した場合、勝者は−40点、返し・破りで確定した相手の加点は維持し、それ以外の手札点だけを2倍とします。この優先関係は本文に明記がないため、本ゲームの取り決めです。</p></details>
   <div class="rowbtns"><button class="btn" id="rc">閉じる</button></div>`);
-  sheet.querySelector("#rc").onclick=close;
+  if(fromStart){veil.dataset.lock="1";veil.onclick=null;}
+  sheet.querySelector("#rc").onclick=fromStart?showStart:close;
 }
 (function(){
   const b=$("bSound");
@@ -1993,7 +2101,12 @@ $("bHome").onclick=()=>{
   sheet.querySelector("#hNo").onclick=close;
 };
 addEventListener("resize",fitMsg);
-$("bRules").onclick=showRules;
+$("bRules").onclick=()=>showRules();
+$("bPause").onclick=()=>{
+  if(!G?.players||G.phase==="over")return;
+  open('<div class="kicker">TAKE A BREATH</div><h2>ひと休みしましょう。</h2><p>CPUも受付時間も止まっています。準備ができたら、同じところから再開できます。</p><div class="rowbtns"><button class="btn pri" id="resume">ゲームを再開</button></div>');$("resume").onclick=close;
+};
+document.addEventListener("visibilitychange",()=>{if(document.hidden&&G?.players&&G.phase!=="over"&&veil.hidden&&!G.hold)$("bPause").onclick();});
 $("bScore").onclick=()=>{
   open(`<div class="kicker">SCORE SHEET</div><h2>得点表</h2>
   <p>合計点が一番低い人が勝ち。マイナスは緑で表示しています。</p>${scoreTable()}
