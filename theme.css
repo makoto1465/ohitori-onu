@@ -1429,6 +1429,64 @@ body::before {
     font-size:8px
   }
 }
+/* A spoken declaration: a warm speech bubble and staggered, springy lettering. */
+.seal.declaration.go {animation:onuShout 1.75s both}
+.seal.declaration::before {
+  inset:auto;
+  width:min(500px,96vw);height:min(380px,76vw);
+  background:repeating-conic-gradient(from 8deg,transparent 0deg 27deg,#e8c986b3 28deg 30deg,transparent 31deg 45deg);
+  mask-image:radial-gradient(ellipse,transparent 48%,#000 50% 59%,transparent 61%);
+}
+.seal.declaration.go::before {animation:onuRays .65s ease-out both}
+.seal.declaration .call-panel {
+  min-width:0;width:max-content;max-width:calc(100vw - 48px);
+  padding:28px 34px 32px;
+  background:linear-gradient(145deg,#fffbed,#f3dfb4);
+  border:3px solid #d6b779;
+  border-radius:48% 45% 42% 38% / 45% 48% 40% 42%;
+  box-shadow:0 7px 0 #8c713e,0 20px 45px #0006,inset 0 3px 0 #fff;
+  overflow:visible;transform:rotate(-7deg);
+}
+.seal.declaration .call-panel::before {
+  inset:auto;bottom:-19px;left:24%;width:27px;height:30px;
+  background:#f3dfb4;border:0;border-right:3px solid #d6b779;border-bottom:3px solid #d6b779;
+  border-radius:0 0 6px 0;transform:skewY(-28deg) rotate(35deg);
+  box-shadow:4px 4px 0 #8c713e;
+}
+.seal.declaration .call-panel::after,
+.seal.declaration .call-kicker,
+.seal.declaration .call-caption,
+.seal.declaration .call-line {display:none}
+.seal.declaration .call-title.jp {
+  position:relative;z-index:1;font-size:clamp(42px,10vw,80px);
+  line-height:1.3;letter-spacing:-.07em;white-space:nowrap;
+  color:#163f35;text-shadow:0 3px 0 #fff9;
+}
+.seal.declaration .call-glyph {
+  display:inline-block;font:inherit;color:inherit;background:none;border:0;border-radius:0;
+  padding:0;box-shadow:none;letter-spacing:inherit;text-shadow:inherit;transform:none;
+  transform-origin:50% 85%;
+}
+.seal.declaration .call-glyph:last-child {color:#aa542b}
+.seal.declaration.go .call-glyph {animation:onuGlyph .65s calc(var(--i)*65ms) both}
+@keyframes onuShout {
+  0% {opacity:0;transform:translateY(30px) scale(.5)}
+  13% {opacity:1;transform:translateY(-6px) scale(1.08)}
+  23% {transform:translateY(2px) scale(.98)}
+  32%,76% {opacity:1;transform:translateY(0) scale(1)}
+  100% {opacity:0;transform:translateY(-16px) scale(1.04)}
+}
+@keyframes onuGlyph {
+  0% {opacity:0;transform:translateY(12px) scale(.65) rotate(-12deg)}
+  42% {opacity:1;transform:translateY(-10px) scale(1.12) rotate(5deg)}
+  68% {transform:translateY(3px) scale(.97) rotate(-2deg)}
+  100% {opacity:1;transform:none}
+}
+@keyframes onuRays {
+  from {opacity:0;transform:scale(.65) rotate(-10deg)}
+  35% {opacity:1}
+  to {opacity:.65;transform:scale(1) rotate(0)}
+}
 /* Keep opponents, piles and status in separate layout rows, even when the
    tutorial explanation makes the available viewport shorter. */
 .room > .bar,.room > .coach {flex-shrink:0}

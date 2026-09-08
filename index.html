@@ -490,7 +490,7 @@ td.win{color:var(--brass);font-weight:700}
 <div class="arrow" id="arrow" hidden><svg viewBox="0 0 34 46" aria-hidden="true">
   <path d="M17 45 L3 23 h8.5 V3 h11 v20 H31 Z"></path></svg></div>
 <div class="fx" id="fx"></div>
-<div class="seal" id="seal" aria-live="polite"><div class="call-panel"><div class="call-kicker">ONE CARD LEFT</div><div class="call-title">ONU<span class="call-dot">.</span></div><div class="call-caption">残り1枚。勝負は、ここから。</div><div class="call-line"></div></div></div>
+<div class="seal" id="seal" aria-live="polite" aria-atomic="true"><div class="call-panel"><div class="call-kicker"></div><div class="call-title"></div><div class="call-caption"></div><div class="call-line"></div></div></div>
 <div class="veil" id="veil" hidden><div class="sheet" id="sheet" role="dialog" aria-modal="true" tabindex="-1" aria-label="ゲームメニュー"></div></div>
 
 <script>
@@ -1422,11 +1422,18 @@ function flashSeal(text){
   const s=$("seal"),t=text||"オヌ";
   if(t==="オヌ")SFX.onu();
   else if(t==="オヌスペ"||t==="返し"||t==="破り")SFX.spe();
-  const styles={"オヌ":["ONE CARD LEFT","ONU","残り1枚。勝負は、ここから。"],"オヌスペ":["ONU SPECIAL","オヌスペ","その合計が、切り札になる。"],"返し":["COUNTER PLAY","オヌスペ返し","その上がり、いただきます。"],"破り":["COUNTER PLAY","オヌスペ破り","最後の1枚で、逆転。"],"あがり":["ROUND CLEAR","あがり！","見事な一手。"],"終了":["ROUND COMPLETE","ラウンド終了","次のラウンドへ、つなげよう。"]};
+  const styles={"オヌ":["","オヌっ！",""],"オヌスペ":["ONU SPECIAL","オヌスペ","その合計が、切り札になる。"],"返し":["COUNTER PLAY","オヌスペ返し","その上がり、いただきます。"],"破り":["COUNTER PLAY","オヌスペ破り","最後の1枚で、逆転。"],"あがり":["ROUND CLEAR","あがり！","見事な一手。"],"終了":["ROUND COMPLETE","ラウンド終了","次のラウンドへ、つなげよう。"]};
   const [kicker,title,caption]=styles[t]||["ONU LOUNGE",t,""];
   s.querySelector(".call-kicker").textContent=kicker;
-  s.querySelector(".call-title").innerHTML=title+(t==="オヌ"?'<span class="call-dot">.</span>':"");
-  s.querySelector(".call-title").classList.toggle("jp",t!=="オヌ");
+  s.classList.toggle("declaration",t==="オヌ");
+  const titleEl=s.querySelector(".call-title");
+  titleEl.textContent=title;
+  if(t==="オヌ")titleEl.replaceChildren(...Array.from(title,(char,i)=>{
+    const glyph=document.createElement("span");
+    glyph.className="call-glyph";glyph.style.setProperty("--i",i);glyph.textContent=char;
+    return glyph;
+  }));
+  titleEl.classList.add("jp");
   s.querySelector(".call-caption").textContent=caption;
   s.classList.remove("go"); void s.offsetWidth; s.classList.add("go");
   clearTimeout(sealTimer);sealTimer=setTimeout(()=>s.classList.remove("go"),1750);
