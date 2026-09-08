@@ -1739,9 +1739,12 @@ function typeStop(){ if(typer){clearTimeout(typer);typer=null;} typing=false; }
 function typeAll(){
   typeStop();
   if(sayNodes)sayNodes.forEach(o=>{o.n.nodeValue=o.t;});
+  fitMsg();
   const c=$("coach"), b=c&&c.querySelector(".caret"); if(b)b.classList.add("on");
 }
-function fitMsg(){}
+function fitMsg(){
+  if(!typing){const p=$("coach").querySelector("p");if(p)p.style.minHeight="";}
+}
 function typeInto(el,html,done){
   typeStop();
   el.style.minHeight="";
@@ -1753,7 +1756,7 @@ function typeInto(el,html,done){
   sayNodes=nodes; typing=true;
   let i=0,j=0;
   (function step(){
-    if(i>=nodes.length){ typing=false; typer=null; done&&done(); return; }
+    if(i>=nodes.length){ typing=false; typer=null; el.style.minHeight=""; done&&done(); return; }
     const o=nodes[i]; j++;
     o.n.nodeValue=o.t.slice(0,j);
     if(j>=o.t.length){ i++; j=0; }
